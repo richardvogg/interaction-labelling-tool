@@ -38,6 +38,6 @@ The code is in MonkeyApp.py. Run the file and the app should open.
 
 ### Save labels
 
-File > SaveDetections: Saves updated tracking results (if you change any labels)
-File > SaveInteractions: Saves labelled interactions in a text file.
+- File > SaveDetections: Saves updated tracking results (if you change any labels)
+- File > SaveInteractions: Saves labelled interactions in a text file.
 
