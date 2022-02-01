@@ -6,12 +6,8 @@ import sys
 
 
 
-sys.path.insert(0, "/Users/vogg/miniconda3/envs/opencv/lib/python3.8/site-packages")
+#sys.path.insert(0, "/Users/vogg/miniconda3/envs/labelling/lib/python3.8/site-packages")
 
-'''
-with open('/Users/vogg/Documents/Python/learning-opencv/data/results.txt') as f:
-    lines = f.readlines()
-'''
 
 
 
@@ -484,8 +480,8 @@ class myApp(wx.App):
     
     def InitFrame(self):
         cap = None #cv2.VideoCapture('/Users/vogg/Documents/Python/learning-opencv/data/VID_20210223_123630_0.mp4')
-        with open('/Users/vogg/Documents/Python/learning-opencv/data/results.txt') as f:
-            lines = f.readlines()
+        #with open('/Users/vogg/Documents/Python/learning-opencv/data/results.txt') as f:
+        #    lines = f.readlines()
 
         lines = None
         frame = MainFrame(parent = None, cap = cap, lines = lines)
