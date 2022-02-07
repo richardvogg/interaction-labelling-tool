@@ -22,23 +22,11 @@ class ImagePanel(wx.Panel):
     def get_frame(self):
         if self.GetParent().GetParent().cap is not None:
             self.GetParent().GetParent().cap.set(cv2.CAP_PROP_POS_FRAMES, self.count)
-            ret, self.frame = self.GetParent().GetParent().cap.read()
+            self.ret, self.frame = self.GetParent().GetParent().cap.read()
             self.height, self.width = self.frame.shape[:2]
             self.new_w, self.new_h = 800, int(800 * self.height/self.width)
 
             self.Bind(wx.EVT_PAINT, self.OnPaint)
-
-    def letterbox(img, height=608, width=1088):  # resize a rectangular image to a padded rectangular
-        shape = img.shape[:2]  # shape = [height, width]
-        ratio = min(float(height) / shape[0], float(width) / shape[1])
-        new_shape = (round(shape[1] * ratio), round(shape[0] * ratio))  # new_shape = [width, height]
-        dw = (width - new_shape[0]) / 2  # width padding
-        dh = (height - new_shape[1]) / 2  # height padding
-        top, bottom = round(dh - 0.1), round(dh + 0.1)
-        left, right = round(dw - 0.1), round(dw + 0.1)
-        img = cv2.resize(img, new_shape, interpolation=cv2.INTER_AREA)  # resized, no border
-        img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=(100,100,100))  # padded rectangular
-        return img
 
     def OnPaint(self, event):
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
@@ -60,7 +48,7 @@ class ImagePanel(wx.Panel):
             color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
             cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, 4)
-            cv2.rectangle(self.frame, (int(c1),int(c2 + 30)), (int(c1 + 30),int(c2)), (255,255,255), cv2.FILLED)
+            cv2.rectangle(self.frame, (int(c1),int(c2 + 30)), (int(c1 + 50),int(c2)), (255,255,255), cv2.FILLED)
             cv2.putText(self.frame, dt[1], (int(c1 + 5),int(c2 + 25)), cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
 
         height = 500
@@ -75,28 +63,20 @@ class ImagePanel(wx.Panel):
         dc.DrawBitmap(self.bmp, 0, 0)
 
     def PriorFrame(self, event):
-        self.count = self.count - 1
-        self.GetParent().GetParent().cap.set(cv2.CAP_PROP_POS_FRAMES, self.count)
-        ret, self.frame = self.GetParent().GetParent().cap.read()
-        if ret:
-            self.Refresh()
-    
+        if self.count > 0:
+            self.count = self.count - 1
+        self.get_frame()
+        self.Refresh()
 
     def NextFrame(self, event):
         self.count = self.count + 1
-        self.GetParent().GetParent().cap.set(cv2.CAP_PROP_POS_FRAMES, self.count)
-        ret, self.frame = self.GetParent().GetParent().cap.read()
-        
-        if ret:
-            self.Refresh()
-        print(self.height, self.width)
+        self.get_frame()
+        self.Refresh()
 
     def GoToFrame(self, event, value):
         self.count = value
-        self.GetParent().GetParent().cap.set(cv2.CAP_PROP_POS_FRAMES, value)
-        ret, self.frame = self.GetParent().GetParent().cap.read()
-        if ret:
-            self.Refresh()
+        self.get_frame()
+        self.Refresh()
 
 
 
@@ -114,33 +94,53 @@ class MainPanel(wx.Panel):
         forward = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         forward.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_GO_FORWARD)
 
-        self.slider = wx.Slider(self, id=wx.ID_ANY, value=0, minValue=0, maxValue=self.GetParent().video_length-1, size = (400, 35))
+        self.slider = wx.Slider(self, id=wx.ID_ANY, value=0, minValue=0, maxValue=int(self.GetParent().video_length-1), size = (400, 35))
 
-        self.find = wx.TextCtrl(self, size = (80,35), value = "Find")
-        self.replace = wx.TextCtrl(self, size = (80, 35), value = "Replace")
-
-        replButton = wx.Button(self, style = wx.BU_EXACTFIT, label = "OK", size = (45, 35))
         addButton = wx.Button(self, style = wx.BU_EXACTFIT, label = "Add", size = (45, 35))
 
         undo = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         undo.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
 
 
+        #By default save files for tracking, interactions and log
+        saving = wx.StaticText(self, id = wx.ID_ANY, label = "Save: ")
+        self.track =  wx.CheckBox(self, label = "Tracking")
+        self.track.SetValue(True)
+        self.inter =  wx.CheckBox(self, label = "Interaction")
+        self.inter.SetValue(True)
+        self.log =  wx.CheckBox(self, label = "Log")
+        self.log.SetValue(True)
+
+        self.find = wx.TextCtrl(self, size = (80,25), value = "Find")
+        self.replace = wx.TextCtrl(self, size = (80, 25), value = "Replace")
+        self.current =  wx.CheckBox(self, label = "After current?")
+        replButton = wx.Button(self, style = wx.BU_EXACTFIT, label = "OK", size = (45, 35))
+        
+
         #Layout
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(back, 0, wx.ALL, 5)
         sizer.Add(self.slider, 1, wx.ALL|wx.EXPAND, 5)
         sizer.Add(forward, 0, wx.ALL, 5)
-        sizer.Add(self.find, 0, wx.ALL|wx.EXPAND, 5)
-        sizer.Add(self.replace, 0, wx.ALL|wx.EXPAND, 5)
-        sizer.Add(replButton, 0, wx.ALL, 5)
         sizer.Add(addButton, 0, wx.ALL, 5)
         sizer.Add(undo, 0, wx.ALL, 5)
+        
+
+        track_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        track_sizer.Add(self.find, 0, wx.ALL|wx.EXPAND, 5)
+        track_sizer.Add(self.replace, 0, wx.ALL|wx.EXPAND, 5)
+        track_sizer.Add(self.current, 0, wx.ALL, 5)
+        track_sizer.Add(replButton, 0, wx.ALL, 5)
+        track_sizer.Add(saving, 0, wx.ALL, 5)
+        track_sizer.Add(self.track, 0, wx.ALL, 5)
+        track_sizer.Add(self.inter, 0, wx.ALL, 5)
+        track_sizer.Add(self.log, 0, wx.ALL, 5)
 
 
         self.mainSizer = wx.BoxSizer(wx.VERTICAL)
         self.mainSizer.Add(self.image, 1, wx.EXPAND, 0)
-        self.mainSizer.Add(sizer, 0)     
+        self.mainSizer.Add(sizer, 0)
+        self.mainSizer.Add(track_sizer, 0)
         
 
         self.SetSizerAndFit(self.mainSizer)
@@ -234,24 +234,6 @@ class MarkerPanel(wx.Panel):
             else:
                 dc1.SetBrush(wx.RED_BRUSH)
             dc1.DrawCircle(self.dot[1],5)
-    '''
-    def OnLeftDown(self, evt):
-        self.CaptureMouse()
-        self.selectionStart = evt.Position
-
-    def OnLeftUp(self, evt):
-        if not self.HasCapture():
-            return
-        self.ReleaseMouse()
-        if evt.Position[0]-self.selectionStart[0] > 1:
-            self.permRect.append(wx.Rect((self.selectionStart[0], 0), 
-                                    (evt.Position[0]-self.selectionStart[0],20)))
-
-            print(self.permRect)
-
-        self.selectionStart = None
-        self.Refresh()
-    '''
 
     def OnKeyPress(self,event):
         keycode = event.GetKeyCode()
@@ -268,7 +250,7 @@ class MarkerPanel(wx.Panel):
                 self.dot = [action,wx.Point(int(400/self.GetParent().GetParent().GetParent().video_length * val), 5)]
             else:
                 val = self.Parent.Parent.Parent.panelOne.slider.GetValue()
-                self.permRect.append([action,wx.Rect((self.selectionStart[0], 0), 
+                self.permRect.append([action, wx.Rect((self.selectionStart[0], 0), 
                                 (400/self.GetParent().GetParent().GetParent().video_length * val -self.selectionStart[0],20))])
                 vmin = min(self.selectionStart[0], val)
                 vmax = max(self.selectionStart[0], val)
@@ -336,19 +318,15 @@ class FileMenu(wx.Menu):
         
     
     def OnInit(self):
-        newItem = wx.MenuItem(parentMenu = self, id = wx.ID_NEW, text = "&New\tCTRL+N")
+        newItem = wx.MenuItem(parentMenu = self, id = wx.ID_NEW, text = "&Open\tCTRL+O")
         self.Append(newItem)
         self.Bind(event = wx.EVT_MENU, handler = self.OnNewVideo, source = newItem)
 
-        openItem = wx.MenuItem(parentMenu = self, id = wx.ID_OPEN, text = "&Open")
+        openItem = wx.MenuItem(parentMenu = self, id = wx.ID_OPEN, text = "&Open Detections")
         self.Append(openItem)
         self.Bind(event = wx.EVT_MENU, handler = self.OnOpen, source = openItem)
 
-        save1Item = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save Detections")
-        self.Append(save1Item)
-        self.Bind(event = wx.EVT_MENU, handler = self.OnSave, source = save1Item)
-
-        save2Item = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save Interactions")
+        save2Item = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save\tCTRL+S")
         self.Append(save2Item)
         self.Bind(event = wx.EVT_MENU, handler = self.OnSave2, source = save2Item)
 
@@ -366,18 +344,24 @@ class FileMenu(wx.Menu):
         
         path = dialog.GetPath()
         elems = path.split("/")
+        print(self.parentFrame.filename)
+        
+
+
         elems.insert(-1, "predictions")
         elems.append("results.txt")
         path_labels = "/".join(elems)
+
 
         if os.path.exists(path):
             cap = cv2.VideoCapture(path)
             with open(path_labels) as f:
                 lines = f.readlines()
         
-        self.parentFrame.OnInit(cap, lines)
+        self.parentFrame.OnInit(cap, lines, filename = elems[-2])
         self.parentFrame.panelTwo.OnInit()
         self.parentFrame.Layout()
+        print(self.parentFrame.filename)
 
     def OnOpen(self, event):
         wildcard = "TXT files (*.txt)|*.txt"
@@ -388,42 +372,63 @@ class FileMenu(wx.Menu):
             return None
 
         path = dialog.GetPath()
+
         if os.path.exists(path):
             with open(path) as f:
                 self.parentFrame.lines = f.readlines()
     
-    def OnSave(self, event):
-        dialog = wx.FileDialog(self.parentFrame, "Save the updated detections", defaultFile = "dets.txt",
-                                style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         
-        if dialog.ShowModal() == wx.ID_CANCEL:
-            return None
-
-        path = dialog.GetPath()
-        data = self.parentFrame.lines
-        with open(path, "w+") as myfile:
-            for line in data:
-                myfile.write(line)
 
     def OnSave2(self,event):
-        dialog = wx.FileDialog(self.parentFrame, "Save the interaction labels", defaultFile = "interactions.txt",
+
+        dialog = wx.FileDialog(self.parentFrame, "Save the labels", defaultFile = self.parentFrame.filename+".txt",
                                 style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         
         if dialog.ShowModal() == wx.ID_CANCEL:
             return None
 
         path = dialog.GetPath()
+        print(path)
         logs = self.parentFrame.loglist
+        elems = path.split("/")
 
-        with open(path, "w+") as myfile:
-            for line in logs[1:]:
-                fields = line.split(" ")
-                if fields[0] != "replace":
-                    for i in range(int(fields[1]),(int(fields[2])+1)):
-                        myfile.write(" ".join([str(i), fields[3], fields[4], fields[0]]) + "\n")
+        if self.parentFrame.panelOne.track.GetValue():
+
+
+            elems1 = elems.copy()
+            elems1.insert(-1, "tracking_updated")
+            path_tracking = "/".join(elems1)
+            data = self.parentFrame.lines
+
+
+            with open(path_tracking, "w+") as myfile:
+                for line in data:
+                    myfile.write(line)
+
+
+        if self.parentFrame.panelOne.log.GetValue():
+            elems2 = elems.copy()
+            elems2.insert(-1, "log")
+            path_log = "/".join(elems2)
+
+            with open(path_log, "w+") as myfile:
+                for line in logs:
+                    myfile.write(line)
+
+
+        if self.parentFrame.panelOne.inter.GetValue():
+
+            elems3 = elems.copy()
+            elems3.insert(-1, "interactions")
+            path_inter = "/".join(elems3)
+            with open(path_inter, "w+") as myfile:
+                for line in logs[1:]:
+                    fields = line.split(" ")
+                    if fields[0] != "replace":
+                        for i in range(int(fields[1]),(int(fields[2])+1)):
+                            myfile.write(" ".join([str(i), fields[3], fields[4], fields[0]]) + "\n")
         
 
-        
 
     def OnQuit(self, event):
         self.parentFrame.Close()
@@ -432,18 +437,17 @@ class FileMenu(wx.Menu):
 
 class MainFrame(wx.Frame):
 
-    def __init__(self, parent, cap, lines):
+    def __init__(self, parent, cap, lines, filename):
         super().__init__(parent= None, title='Review Video', size = (850, 650))
-        self.cap = cap #Video
-        self.lines = lines
-        self.OnInit(self.cap, self.lines)
+        self.OnInit(cap, lines, filename)
         
 
-    def OnInit(self, cap, lines):
+    def OnInit(self, cap, lines, filename):
+        self.filename = filename
         self.cap = cap
         self.get_video_length()
         self.lines = lines #Labels
-        self.loglist = ["Loglist\n--------"]
+        self.loglist = ["Loglist\n--------\n"]
 
 
         self.panelOne = MainPanel(self)
@@ -452,25 +456,22 @@ class MainFrame(wx.Frame):
 
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
-        self.sizer.Add(self.panelOne, 2, wx.EXPAND)
-        self.sizer.Add(self.panelTwo, 1, wx.EXPAND)
+        self.sizer.Add(self.panelOne, 5, wx.EXPAND)
+        self.sizer.Add(self.panelTwo, 2, wx.EXPAND)
         
-
         self.SetSizer(self.sizer)
         
-
         menuBar = wx.MenuBar()
         fileMenu = FileMenu(parentFrame=self)
         menuBar.Append(fileMenu, '&File')
         self.SetMenuBar(menuBar)
 
+
     def get_video_length(self):
         if self.cap is not None:
             self.video_length = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
         else:
-            self.video_length = 0
-
-    
+            self.video_length = 20
 
 
 class myApp(wx.App):
@@ -479,12 +480,9 @@ class myApp(wx.App):
         self.InitFrame()
     
     def InitFrame(self):
-        cap = None #cv2.VideoCapture('/Users/vogg/Documents/Python/learning-opencv/data/VID_20210223_123630_0.mp4')
-        #with open('/Users/vogg/Documents/Python/learning-opencv/data/results.txt') as f:
-        #    lines = f.readlines()
-
+        cap = None 
         lines = None
-        frame = MainFrame(parent = None, cap = cap, lines = lines)
+        frame = MainFrame(parent = None, cap = cap, lines = lines, filename = "")
         frame.Show()
 
 
