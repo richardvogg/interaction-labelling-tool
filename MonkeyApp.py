@@ -260,7 +260,6 @@ class MarkerPanel(wx.Panel):
     def OnKeyPress(self,event):
         keycode = event.GetKeyCode()
 
-
         #ascii keys: https://theasciicode.com.ar
         if keycode == 70:
             action = "fight"
@@ -371,7 +370,6 @@ class FileMenu(wx.Menu):
         path = dialog.GetPath()
         elems = path.split("/")
         
-
 
         elems.insert(-1, "predictions")
         elems.append("results.txt")

@@ -5,6 +5,7 @@
 ## Data Structure
 
 Inside the folder with your data, you will need to have a folder called `predictions`. It contains one folder for each Video (with the same name as the video) containing `results.txt` which are simulatenously loaded with the video.
+Additionally, create three folders called `tracking_updated`, `interactions`, and `log`, which are empty for now.
 
 ```
 datafolder
@@ -13,6 +14,9 @@ datafolder
    |                    └——————results.txt
    |        └——————VID_02.mp4
    |                    └——————results.txt
+   |------tracking_updated
+   |------interactions
+   |------log
    └------VID_01.mp4
    └------VID_02.mp4
 ```
