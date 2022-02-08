@@ -32,9 +32,9 @@ class ImagePanel(wx.Panel):
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         
         #Draw Rectangles
-        frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines]
+        frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines[-1]]
         indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
-        dets = [self.Parent.Parent.lines[i] for i in indices]
+        dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         
         for det in dets:
             dt = det.split(",")
@@ -167,12 +167,34 @@ class MainPanel(wx.Panel):
         self.image.GoToFrame(event, value)
 
     def ClickOK(self, event):
-        for i, line in enumerate(self.Parent.lines):
+        if self.current.GetValue() == True:
+            after_frame = self.slider.GetValue()
+        else:
+            after_frame = 0
+
+        lines = self.Parent.lines[-1].copy()
+
+        current_max = self.Parent.get_max_id()
+        for i, line in enumerate(lines):
             fields = line.split(",")
-            if str(fields[1]) == str(self.find.GetValue()):
-                fields[1] = self.replace.GetValue()
-            self.Parent.lines[i] = ",".join(fields)
-        self.Parent.loglist.append(" ".join(["replace",self.find.GetValue(),self.replace.GetValue()]))
+
+            if int(fields[0]) >= after_frame:
+                if str(fields[1]) == str(self.find.GetValue()):
+                    if self.replace.GetValue() == "-":
+                        del lines[i]
+                    elif self.replace.GetValue() == "?":
+                        
+                        fields[1] = str(current_max + 1)
+                        lines[i] = ",".join(fields)
+                        self.GetParent().max_id += 1
+                    else:
+                        fields[1] = self.replace.GetValue()
+                        lines[i] = ",".join(fields)
+        
+
+        self.Parent.lines.append(lines)
+        self.Parent.loglist.append(" ".join(["replace", self.find.GetValue(), 
+                                                    self.replace.GetValue(), str(after_frame)+"\n"]))
         for elem in self.Parent.loglist:
             print(elem)
 
@@ -187,11 +209,7 @@ class MainPanel(wx.Panel):
 
         #if we undo a "replace" statement, simply replace the values in the original labeling file
         if action_items[0] == "replace":
-            for i, line in enumerate(self.Parent.lines):
-                fields = line.split(",")
-                if str(fields[1]) == action_items[2]:
-                    fields[1] = action_items[1]
-                self.Parent.lines[i] = ",".join(fields)
+            self.Parent.lines.pop()
             self.Parent.loglist.pop()
 
 
@@ -225,12 +243,16 @@ class MarkerPanel(wx.Panel):
         for rect in self.permRect:
             if rect[0] == "fight":
                 dc1.SetBrush(wx.BLUE_BRUSH)
+            elif rect[0] == "looking_at":
+                dc1.SetBrush(wx.GREEN_BRUSH)
             else:
                 dc1.SetBrush(wx.RED_BRUSH)
             dc1.DrawRectangle(rect[1])
         if self.dot:
             if self.dot[0] == "fight":
                 dc1.SetBrush(wx.BLUE_BRUSH)
+            elif self.dot[0] == "looking_at":
+                dc1.SetBrush(wx.GREEN_BRUSH)
             else:
                 dc1.SetBrush(wx.RED_BRUSH)
             dc1.DrawCircle(self.dot[1],5)
@@ -238,12 +260,16 @@ class MarkerPanel(wx.Panel):
     def OnKeyPress(self,event):
         keycode = event.GetKeyCode()
 
+
+        #ascii keys: https://theasciicode.com.ar
         if keycode == 70:
             action = "fight"
         elif keycode == 71:
             action = "groom"
+        elif keycode == 76:
+            action = "looking_at"
 
-        if (keycode == 70) | (keycode == 71): #Spacebar
+        if (keycode == 70) | (keycode == 71) | (keycode == 76): #Spacebar
             if self.dot is None:
                 val = self.Parent.Parent.Parent.panelOne.slider.GetValue()
                 self.selectionStart = (int(400/self.GetParent().GetParent().GetParent().video_length * val),0)
@@ -344,7 +370,6 @@ class FileMenu(wx.Menu):
         
         path = dialog.GetPath()
         elems = path.split("/")
-        print(self.parentFrame.filename)
         
 
 
@@ -361,7 +386,7 @@ class FileMenu(wx.Menu):
         self.parentFrame.OnInit(cap, lines, filename = elems[-2])
         self.parentFrame.panelTwo.OnInit()
         self.parentFrame.Layout()
-        print(self.parentFrame.filename)
+        self.parentFrame.Refresh()
 
     def OnOpen(self, event):
         wildcard = "TXT files (*.txt)|*.txt"
@@ -398,7 +423,7 @@ class FileMenu(wx.Menu):
             elems1 = elems.copy()
             elems1.insert(-1, "tracking_updated")
             path_tracking = "/".join(elems1)
-            data = self.parentFrame.lines
+            data = self.parentFrame.lines[-1]
 
 
             with open(path_tracking, "w+") as myfile:
@@ -439,6 +464,8 @@ class MainFrame(wx.Frame):
 
     def __init__(self, parent, cap, lines, filename):
         super().__init__(parent= None, title='Review Video', size = (850, 650))
+        self.lines = []
+        self.max_id = 0
         self.OnInit(cap, lines, filename)
         
 
@@ -446,7 +473,9 @@ class MainFrame(wx.Frame):
         self.filename = filename
         self.cap = cap
         self.get_video_length()
-        self.lines = lines #Labels
+        
+        self.lines.append(lines) #Labels
+        self.get_max_id()
         self.loglist = ["Loglist\n--------\n"]
 
 
@@ -473,6 +502,16 @@ class MainFrame(wx.Frame):
         else:
             self.video_length = 20
 
+    def get_max_id(self):
+        self.max_id = 0
+        if len(self.lines) > 0:
+            for line in self.lines[-1]:
+                fields = line.split(",")
+                if int(fields[1]) > self.max_id:
+                    self.max_id = int(fields[1])
+        return(self.max_id)
+
+
 
 class myApp(wx.App):
     def __init__(self):
@@ -481,7 +520,7 @@ class myApp(wx.App):
     
     def InitFrame(self):
         cap = None 
-        lines = None
+        lines = []
         frame = MainFrame(parent = None, cap = cap, lines = lines, filename = "")
         frame.Show()
 
