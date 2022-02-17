@@ -279,7 +279,7 @@ class MarkerPanel(wx.Panel):
                                 (400/self.GetParent().GetParent().GetParent().video_length * val -self.selectionStart[0],20))])
                 vmin = min(self.selectionStart[0], val)
                 vmax = max(self.selectionStart[0], val)
-                self.Parent.Parent.Parent.loglist.append(" ".join([action, str(vmin), str(vmax), self.Parent.who.GetValue(), self.Parent.to.GetValue(), str(self.Parent.id)]))
+                self.Parent.Parent.Parent.loglist.append(" ".join([action, str(vmin), str(vmax), self.Parent.who.GetValue(), self.Parent.to.GetValue(), str(self.Parent.id)+"\n"]))
                 for elem in self.Parent.Parent.Parent.loglist:
                     print(elem)
                 
