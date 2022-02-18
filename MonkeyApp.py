@@ -1,6 +1,7 @@
 import wx
 import wx.lib.scrolledpanel as sp
 import cv2
+import yaml
 import os
 import sys
 
@@ -207,13 +208,13 @@ class MainPanel(wx.Panel):
         action = self.GetParent().loglist[-1]
         action_items = action.split(" ")
 
-        #if we undo a "replace" statement, simply replace the values in the original labeling file
+        #if we undo a "replace" statement
         if action_items[0] == "replace":
             self.Parent.lines.pop()
             self.Parent.loglist.pop()
 
 
-        #if we undo a "groom" or "fight" statement we have to find the correct line and then remove the last element
+        #if we undo a "groom" or "fight" statement 
 
         else:
             children = self.Parent.panelTwo.flexSizer.GetChildren()
@@ -240,45 +241,54 @@ class MarkerPanel(wx.Panel):
 
     def OnPaint(self, evt):
         dc1 = wx.PaintDC(self)
+        with open("config.yml", "r") as ymlfile:
+            cfg = yaml.safe_load(ymlfile)
         for rect in self.permRect:
-            if rect[0] == "fight":
-                dc1.SetBrush(wx.BLUE_BRUSH)
-            elif rect[0] == "looking_at":
-                dc1.SetBrush(wx.GREEN_BRUSH)
-            else:
-                dc1.SetBrush(wx.RED_BRUSH)
-            dc1.DrawRectangle(rect[1])
+            for i, key in enumerate(cfg["keys"]):
+                if rect[0] == cfg["keys"][key]:
+                    dc1.SetBrush(wx.Brush(wx.Colour(i*10 % 255, i * 100 % 255, i * 200 % 255)))
+                dc1.DrawRectangle(rect[1])
+                
         if self.dot:
-            if self.dot[0] == "fight":
-                dc1.SetBrush(wx.BLUE_BRUSH)
-            elif self.dot[0] == "looking_at":
-                dc1.SetBrush(wx.GREEN_BRUSH)
-            else:
-                dc1.SetBrush(wx.RED_BRUSH)
+            for i, key in enumerate(cfg["keys"]):
+                if self.dot[0] == cfg["keys"][key]:
+                    dc1.SetBrush(wx.Brush(wx.Colour(i*10 % 255, i * 100 % 255, i * 200 % 255)))
             dc1.DrawCircle(self.dot[1],5)
 
     def OnKeyPress(self,event):
         keycode = event.GetKeyCode()
 
-        #ascii keys: https://theasciicode.com.ar
-        if keycode == 70:
-            action = "fight"
-        elif keycode == 71:
-            action = "groom"
-        elif keycode == 76:
-            action = "looking_at"
+        with open("config.yml", "r") as ymlfile:
+            cfg = yaml.safe_load(ymlfile)
+        
+        keylist = []
 
-        if (keycode == 70) | (keycode == 71) | (keycode == 76): #Spacebar
+        for key in cfg["keys"]:
+            keylist.append(int(ord(key.upper())))
+            if keycode == int(ord(key.upper())):
+                action = cfg["keys"][key]
+
+        #ascii keys: https://theasciicode.com.ar
+        #if keycode == 70:
+        #    action = "fight"
+        #elif keycode == 71:
+        #    action = "groom"
+        #elif keycode == 76:
+        #    action = "looking_at"
+
+        if keycode in keylist: 
             if self.dot is None:
                 val = self.Parent.Parent.Parent.panelOne.slider.GetValue()
-                self.selectionStart = (int(400/self.GetParent().GetParent().GetParent().video_length * val),0)
-                self.dot = [action,wx.Point(int(400/self.GetParent().GetParent().GetParent().video_length * val), 5)]
+                self.selectionStart = val
+                self.selectionStartCalc = int(400/self.GetParent().GetParent().GetParent().video_length * val)
+                self.dot = [action,wx.Point(self.selectionStartCalc, 5)]
             else:
                 val = self.Parent.Parent.Parent.panelOne.slider.GetValue()
-                self.permRect.append([action, wx.Rect((self.selectionStart[0], 0), 
-                                (400/self.GetParent().GetParent().GetParent().video_length * val -self.selectionStart[0],20))])
-                vmin = min(self.selectionStart[0], val)
-                vmax = max(self.selectionStart[0], val)
+                valCalc = int(400/self.GetParent().GetParent().GetParent().video_length * val)
+                self.permRect.append([action, wx.Rect((self.selectionStartCalc, 0), 
+                                (valCalc - self.selectionStartCalc,20))])
+                vmin = min(self.selectionStart, val)
+                vmax = max(self.selectionStart, val)
                 self.Parent.Parent.Parent.loglist.append(" ".join([action, str(vmin), str(vmax), self.Parent.who.GetValue(), self.Parent.to.GetValue(), str(self.Parent.id)+"\n"]))
                 for elem in self.Parent.Parent.Parent.loglist:
                     print(elem)
@@ -340,6 +350,8 @@ class FileMenu(wx.Menu):
         super().__init__()
         self.parentFrame = parentFrame
         self.OnInit()
+
+        
         
     
     def OnInit(self):
