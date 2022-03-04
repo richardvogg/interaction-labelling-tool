@@ -37,20 +37,25 @@ class ImagePanel(wx.Panel):
         indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         
+        width_factor = self.width/1920
+        height_factor = self.height/1080
+
         for det in dets:
             dt = det.split(",")
 
+
+
             i = float(dt[1])
-            c1 = float(dt[2])
-            c2 = float(dt[3])
-            c3 = float(dt[4])
-            c4 = float(dt[5])
+            c1 = float(dt[2]) * width_factor
+            c2 = float(dt[3]) * height_factor
+            c3 = float(dt[4]) * width_factor
+            c4 = float(dt[5]) * height_factor
 
             color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
-            cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, 4)
-            cv2.rectangle(self.frame, (int(c1),int(c2 + 30)), (int(c1 + 50),int(c2)), (255,255,255), cv2.FILLED)
-            cv2.putText(self.frame, dt[1], (int(c1 + 5),int(c2 + 25)), cv2.FONT_HERSHEY_DUPLEX, 1, (0,0,0))
+            cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, 4 * int(width_factor))
+            cv2.rectangle(self.frame, (int(c1),int(c2 + 30 * int(height_factor))), (int(c1 + 50 * int(width_factor)),int(c2)), (255,255,255), cv2.FILLED)
+            cv2.putText(self.frame, dt[1], (int(c1 + 5 * int(width_factor)),int(c2 + 25 * int(height_factor))), cv2.FONT_HERSHEY_DUPLEX, 1 * int(width_factor), (0,0,0))
 
         height = 500
         width = 800
@@ -70,7 +75,8 @@ class ImagePanel(wx.Panel):
         self.Refresh()
 
     def NextFrame(self, event):
-        self.count = self.count + 1
+        if self.count < self.GetParent().GetParent().video_length - 1:
+            self.count = self.count + 1
         self.get_frame()
         self.Refresh()
 
@@ -88,7 +94,7 @@ class MainPanel(wx.Panel):
 
         #Widgets and Panels
         self.image = ImagePanel(self)
-        
+
         back = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         back.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_GO_BACK)
 
@@ -155,6 +161,7 @@ class MainPanel(wx.Panel):
         undo.Bind(wx.EVT_BUTTON, self.UndoAction)
 
 
+
     def GoBack(self, event):
         self.image.PriorFrame(event)
         self.slider.SetValue(self.slider.GetValue()-1)
@@ -168,35 +175,41 @@ class MainPanel(wx.Panel):
         self.image.GoToFrame(event, value)
 
     def ClickOK(self, event):
+
         if self.current.GetValue() == True:
             after_frame = self.slider.GetValue()
         else:
             after_frame = 0
 
-        lines = self.Parent.lines[-1].copy()
+        lns = self.GetParent().lines[-1].copy()
+        lns2 = lns.copy()
 
+        print(len(lns))
         current_max = self.Parent.get_max_id()
-        for i, line in enumerate(lines):
+        for i, line in enumerate(lns2):
             fields = line.split(",")
 
             if int(fields[0]) >= after_frame:
                 if str(fields[1]) == str(self.find.GetValue()):
+                    
                     if self.replace.GetValue() == "-":
-                        del lines[i]
+                        lns[i] = "remove"
                     elif self.replace.GetValue() == "?":
                         
                         fields[1] = str(current_max + 1)
-                        lines[i] = ",".join(fields)
+                        lns[i] = ",".join(fields)
                         self.GetParent().max_id += 1
                     else:
                         fields[1] = self.replace.GetValue()
-                        lines[i] = ",".join(fields)
+                        lns[i] = ",".join(fields)
         
-
-        self.Parent.lines.append(lines)
-        self.Parent.loglist.append(" ".join(["replace", self.find.GetValue(), 
+        lns = [x for x in lns if x!="remove"]
+        self.GetParent().lines.append(lns)
+        self.GetParent().loglist.append(" ".join(["replace", self.find.GetValue(), 
                                                     self.replace.GetValue(), str(after_frame)+"\n"]))
-        for elem in self.Parent.loglist:
+
+        self.GetParent().Refresh()
+        for elem in self.GetParent().loglist:
             print(elem)
 
     def AddAction(self, event):
@@ -234,8 +247,6 @@ class MarkerPanel(wx.Panel):
         self.selectionStart = None
         
         self.Bind(wx.EVT_PAINT, self.OnPaint)
-        #self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
-        #self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
 
@@ -410,7 +421,12 @@ class FileMenu(wx.Menu):
 
         if os.path.exists(path):
             with open(path) as f:
-                self.parentFrame.lines = f.readlines()
+                lines = f.readlines()
+        
+        self.parentFrame.OnInit(self.parentFrame.cap, lines, filename = self.parentFrame.filename)
+        self.parentFrame.panelTwo.OnInit()
+        self.parentFrame.Layout()
+        self.parentFrame.Refresh()
     
         
 
