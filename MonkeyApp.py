@@ -115,8 +115,8 @@ class MainPanel(wx.Panel):
         self.track.SetValue(True)
         self.inter =  wx.CheckBox(self, label = "Interaction")
         self.inter.SetValue(True)
-        self.log =  wx.CheckBox(self, label = "Log")
-        self.log.SetValue(True)
+        #self.log =  wx.CheckBox(self, label = "Log")
+        #self.log.SetValue(True)
 
         self.find = wx.TextCtrl(self, size = (80,25), value = "Find")
         self.replace = wx.TextCtrl(self, size = (80, 25), value = "Replace")
@@ -141,7 +141,7 @@ class MainPanel(wx.Panel):
         track_sizer.Add(saving, 0, wx.ALL, 5)
         track_sizer.Add(self.track, 0, wx.ALL, 5)
         track_sizer.Add(self.inter, 0, wx.ALL, 5)
-        track_sizer.Add(self.log, 0, wx.ALL, 5)
+        #track_sizer.Add(self.log, 0, wx.ALL, 5)
 
 
         self.mainSizer = wx.BoxSizer(wx.VERTICAL)
@@ -456,8 +456,8 @@ class FileMenu(wx.Menu):
                 for line in data:
                     myfile.write(line)
 
-
-        if self.parentFrame.panelOne.log.GetValue():
+            # if tracking is updated then we also want to save the log
+        #if self.parentFrame.panelOne.log.GetValue():
             elems2 = elems.copy()
             elems2.insert(-1, "log")
             path_log = "/".join(elems2)
