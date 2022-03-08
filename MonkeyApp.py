@@ -19,6 +19,7 @@ class ImagePanel(wx.Panel):
 
         self.count = 0
         self.get_frame()
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
     def get_frame(self):
         if self.GetParent().GetParent().cap is not None:
@@ -85,6 +86,10 @@ class ImagePanel(wx.Panel):
         self.get_frame()
         self.Refresh()
 
+    def OnKeyPress(self, event):
+        self.GetParent().OnKeyPress(event)
+    
+
 
 
 class MainPanel(wx.Panel):
@@ -95,6 +100,7 @@ class MainPanel(wx.Panel):
         #Widgets and Panels
         self.image = ImagePanel(self)
 
+        
         back = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         back.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_GO_BACK)
 
@@ -107,6 +113,10 @@ class MainPanel(wx.Panel):
 
         undo = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         undo.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
+
+        descr = wx.StaticText(self, -1, "Playback speed")
+        self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10"])
+        self.speed.SetSelection(3)
 
 
         #By default save files for tracking, interactions and log
@@ -131,6 +141,8 @@ class MainPanel(wx.Panel):
         sizer.Add(forward, 0, wx.ALL, 5)
         sizer.Add(addButton, 0, wx.ALL, 5)
         sizer.Add(undo, 0, wx.ALL, 5)
+        sizer.Add(descr)
+        sizer.Add(self.speed, 0, wx.ALL, 5)
         
 
         track_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -153,12 +165,14 @@ class MainPanel(wx.Panel):
         self.SetSizerAndFit(self.mainSizer)
 
         #Events
+
         back.Bind(wx.EVT_BUTTON, self.GoBack)
         forward.Bind(wx.EVT_BUTTON, self.GoForward)
         self.slider.Bind(wx.EVT_SCROLL, self.MoveSlider)
         replButton.Bind(wx.EVT_BUTTON, self.ClickOK)
         addButton.Bind(wx.EVT_BUTTON, self.AddAction)
         undo.Bind(wx.EVT_BUTTON, self.UndoAction)
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
 
 
@@ -173,6 +187,25 @@ class MainPanel(wx.Panel):
     def MoveSlider(self, event):
         value = self.slider.GetValue()
         self.image.GoToFrame(event, value)
+
+    def OnKeyPress(self, event):
+        keycode = event.GetKeyCode()
+        speed = int(self.speed.GetString(self.speed.GetSelection()))
+        if keycode == 316 and self.slider.GetValue() < self.GetParent().video_length - 1 - speed:
+            
+            self.slider.SetValue(self.slider.GetValue() + speed)
+            self.image.count += speed
+            self.image.get_frame()
+            
+            self.image.Refresh()
+            self.Refresh()
+        elif keycode == 314 and self.slider.GetValue() > speed:
+            
+            self.slider.SetValue(self.slider.GetValue() - speed)
+            self.image.count -= speed
+            self.image.get_frame()
+            self.image.Refresh()
+            self.Refresh()
 
     def ClickOK(self, event):
 

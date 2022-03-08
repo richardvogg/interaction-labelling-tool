@@ -71,7 +71,7 @@ class ImagePanel(wx.Panel):
 
 
 class MainPanel(wx.Panel):
-    def __init__(self, parent, img_count):
+    def __init__(self, parent):
         super().__init__(parent = parent)
         self.SetBackgroundColour((50,0,50))
 
@@ -79,6 +79,8 @@ class MainPanel(wx.Panel):
         self.image = ImagePanel(self)
 
         self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10"])
+        self.img_count_start = wx.TextCtrl(self, value = "0", size = (40,40))
+        self.count_start = wx.Button(self, style = wx.BU_EXACTFIT, label = "OK")
 
         back = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         back.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_GO_BACK)
@@ -93,6 +95,8 @@ class MainPanel(wx.Panel):
 
         #Layout
         sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.img_count_start, 0, wx.ALL, 5)
+        sizer.Add(self.count_start, 0, wx.ALL, 5)
         sizer.Add(self.speed, 0, wx.ALL, 5)
         sizer.Add(back, 0, wx.ALL, 5)
         sizer.Add(self.slider, 1, wx.ALL|wx.EXPAND, 5)
@@ -110,16 +114,16 @@ class MainPanel(wx.Panel):
         self.SetSizerAndFit(self.mainSizer)
 
         #Events
+        self.count_start.Bind(wx.EVT_BUTTON, self.SetImgCount)
         back.Bind(wx.EVT_BUTTON, self.GoBack)
         forward.Bind(wx.EVT_BUTTON, self.GoForward)
         self.slider.Bind(wx.EVT_SCROLL, self.MoveSlider)
         selectButton.Bind(wx.EVT_BUTTON, self.ClickSelect)
         selectButton2.Bind(wx.EVT_BUTTON, self.ClickSelect2)
-        
 
-        #running image number
-        self.img_count = img_count
 
+    def SetImgCount(self, event):
+        self.img_count = int(self.img_count_start.GetValue())
 
     def GoBack(self, event):
         self.image.PriorFrame(event)
@@ -200,7 +204,6 @@ class MainFrame(wx.Frame):
         super().__init__(parent= None, title='Review Video', size = (850, 550))
         self.max_id = 0
         self.output_path = "/Users/vogg/Documents/Labeling/Lemurs/"
-        self.img_count = 1
         
         self.OnInit(cap, filename)
         
@@ -210,7 +213,7 @@ class MainFrame(wx.Frame):
         self.cap = cap
         self.get_video_length()
 
-        self.panelOne = MainPanel(self, self.img_count)
+        self.panelOne = MainPanel(self)
 
         self.sizer = wx.BoxSizer(wx.VERTICAL)
         self.sizer.Add(self.panelOne, 5, wx.EXPAND)
