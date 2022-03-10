@@ -1,3 +1,11 @@
+# Packages
+
+You will need to install opencv and wxPython, e.g. by running `pip install opencv-python` and `pip install wxpython`.
+
+The code for the Interaction Labelling Tool is in MonkeyApp.py. 
+The code for the Tool for Extraction of Frames is in ExtractFramesApp.py. 
+Run the file and the app should open. (For Mac you might need to call `pythonw MonkeyApp.py` instead of `python MonkeyApp.py`).
+
 # interaction-labelling-tool
 
 ## Data Structure
@@ -19,11 +27,7 @@ datafolder
    └------VID_02.mp4
 ```
 
-## Packages
 
-You will need to install opencv and wxPython, e.g. by running `pip install opencv-python` and `pip install wxpython`.
-
-The code is in MonkeyApp.py. Run the file and the app should open.
 
 
 ### Open a new Video
