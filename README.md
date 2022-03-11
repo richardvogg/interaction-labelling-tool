@@ -52,11 +52,11 @@ If you want to remove a label, put "-" to the second box.
 If you don't know which is the next available label, put "?" in the second box.
 You have the option to replace the label in all frames or only after a certain frame.
 
-![](imgs/Tracking.png)
+![](imgs/Interactions.png)
 
 ### Add interaction labels
 
-![](imgs/Interactions.png)
+![](imgs/Tracking.png)
 
 ### Save labels
 
