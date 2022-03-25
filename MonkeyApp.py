@@ -434,9 +434,15 @@ class FileMenu(wx.Menu):
 
         if os.path.exists(path):
             cap = cv2.VideoCapture(path)
-            with open(path_labels) as f:
-                lines = f.readlines()
+            try:
+                with open(path_labels) as f:
+                    lines = f.readlines()
+            except FileNotFoundError:
+                lines = []
+                print("No files found")
+            
         
+
         self.parentFrame.OnInit(cap, lines, filename = elems[-2])
         self.parentFrame.panelTwo.OnInit()
         self.parentFrame.Layout()
