@@ -39,6 +39,7 @@ class ImagePanel(wx.Panel):
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         
         width_factor = self.width/1920
+        print(width_factor)
         height_factor = self.height/1080
 
         for det in dets:
@@ -47,16 +48,25 @@ class ImagePanel(wx.Panel):
 
 
             i = float(dt[1])
-            c1 = float(dt[2]) * width_factor
-            c2 = float(dt[3]) * height_factor
-            c3 = float(dt[4]) * width_factor
-            c4 = float(dt[5]) * height_factor
+            c1 = float(dt[2]) #* width_factor
+            c2 = float(dt[3]) #* height_factor
+            c3 = float(dt[4]) #* width_factor
+            c4 = float(dt[5]) #* height_factor
 
             color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
-            cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, 4 * int(width_factor))
-            cv2.rectangle(self.frame, (int(c1),int(c2 + 30 * int(height_factor))), (int(c1 + 50 * int(width_factor)),int(c2)), (255,255,255), cv2.FILLED)
-            cv2.putText(self.frame, dt[1], (int(c1 + 5 * int(width_factor)),int(c2 + 25 * int(height_factor))), cv2.FONT_HERSHEY_DUPLEX, 1 * int(width_factor), (0,0,0))
+
+            
+            if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
+                label = dt[7] + "-" + dt[1]
+            else:
+                label = dt[1]
+
+            
+            cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
+            if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
+                cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(50 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
+            cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
 
         height = 500
         width = 800
@@ -118,6 +128,14 @@ class MainPanel(wx.Panel):
         self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10"])
         self.speed.SetSelection(3)
 
+        multi = wx.StaticText(self, -1, "Multicls?")
+        self.multi = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
+        self.multi.SetSelection(0)
+
+        lblbg = wx.StaticText(self, -1, "LabelBG?")
+        self.lblbg = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
+        self.lblbg.SetSelection(0)
+
 
         #By default save files for tracking, interactions and log
         saving = wx.StaticText(self, id = wx.ID_ANY, label = "Save: ")
@@ -143,6 +161,10 @@ class MainPanel(wx.Panel):
         sizer.Add(undo, 0, wx.ALL, 5)
         sizer.Add(descr)
         sizer.Add(self.speed, 0, wx.ALL, 5)
+        sizer.Add(multi)
+        sizer.Add(self.multi, 0, wx.ALL, 5)
+        sizer.Add(lblbg)
+        sizer.Add(self.lblbg, 0, wx.ALL, 5)
         
 
         track_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -187,6 +209,7 @@ class MainPanel(wx.Panel):
     def MoveSlider(self, event):
         value = self.slider.GetValue()
         self.image.GoToFrame(event, value)
+
 
     def OnKeyPress(self, event):
         keycode = event.GetKeyCode()
