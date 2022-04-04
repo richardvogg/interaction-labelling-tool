@@ -39,7 +39,6 @@ class ImagePanel(wx.Panel):
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         
         width_factor = self.width/1920
-        print(width_factor)
         height_factor = self.height/1080
 
         for det in dets:
@@ -105,7 +104,7 @@ class ImagePanel(wx.Panel):
 class MainPanel(wx.Panel):
     def __init__(self, parent):
         super().__init__(parent = parent)
-        self.SetBackgroundColour((50,0,50))
+        self.SetBackgroundColour((50,150,150))
 
         #Widgets and Panels
         self.image = ImagePanel(self)
@@ -240,7 +239,7 @@ class MainPanel(wx.Panel):
         lns = self.GetParent().lines[-1].copy()
         lns2 = lns.copy()
 
-        print(len(lns))
+        
         current_max = self.Parent.get_max_id()
         for i, line in enumerate(lns2):
             fields = line.split(",")
@@ -501,7 +500,6 @@ class FileMenu(wx.Menu):
             return None
 
         path = dialog.GetPath()
-        print(path)
         logs = self.parentFrame.loglist
         elems = path.split("/")
 
