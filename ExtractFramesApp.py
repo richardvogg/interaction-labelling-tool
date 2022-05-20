@@ -112,6 +112,7 @@ class MainPanel(wx.Panel):
         
 
         self.SetSizerAndFit(self.mainSizer)
+        self.img_count = 0
 
         #Events
         self.count_start.Bind(wx.EVT_BUTTON, self.SetImgCount)
@@ -146,7 +147,6 @@ class MainPanel(wx.Panel):
         self.image.frame)
 
         self.img_count += 1
-        self.GetParent().img_count += 1
 
     def ClickSelect2(self, event):
         after_frame = self.slider.GetValue()

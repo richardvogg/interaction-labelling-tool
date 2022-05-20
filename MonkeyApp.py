@@ -124,12 +124,20 @@ class MainPanel(wx.Panel):
         undo.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
 
         descr = wx.StaticText(self, -1, "Playback speed")
-        self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10"])
+        self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10", "20", "50", "100"])
         self.speed.SetSelection(3)
 
         multi = wx.StaticText(self, -1, "Multicls?")
         self.multi = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
-        self.multi.SetSelection(0)
+        with open("config.yml", "r") as ymlfile:
+            cfg = yaml.safe_load(ymlfile)
+
+        print(cfg['others']['multi_class'])
+        if cfg['others']['multi_class']:
+            sel = 0
+        else:
+            sel = 1
+        self.multi.SetSelection(sel)
 
         lblbg = wx.StaticText(self, -1, "LabelBG?")
         self.lblbg = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
@@ -287,7 +295,7 @@ class MainPanel(wx.Panel):
         else:
             children = self.Parent.panelTwo.flexSizer.GetChildren()
             for child in children:
-                if str(child.GetWindow().id) == action_items[-1]:
+                if int(child.GetWindow().id) == int(action_items[-1]):
                     child.GetWindow().newPanel.permRect.pop()
                     child.GetWindow().newPanel.Refresh()
                     self.Parent.loglist.pop()

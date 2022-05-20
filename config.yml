@@ -5,3 +5,5 @@ keys:
 size:
   width: 850
   height: 650
+others:
+  multi_class: no
