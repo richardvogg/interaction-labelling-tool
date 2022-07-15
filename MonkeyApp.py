@@ -1,15 +1,11 @@
 import wx
 import wx.lib.scrolledpanel as sp
 import cv2
+import pandas as pd
 import yaml
 import os
-import sys
-
-
 
 #sys.path.insert(0, "/Users/vogg/miniconda3/envs/labelling/lib/python3.8/site-packages")
-
-
 
 
 class ImagePanel(wx.Panel):
@@ -37,7 +33,6 @@ class ImagePanel(wx.Panel):
         frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines[-1]]
         indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
-        
         width_factor = self.width/1920
         height_factor = self.height/1080
 
@@ -132,7 +127,7 @@ class MainPanel(wx.Panel):
         with open("config.yml", "r") as ymlfile:
             cfg = yaml.safe_load(ymlfile)
 
-        print(cfg['others']['multi_class'])
+        
         if cfg['others']['multi_class']:
             sel = 0
         else:
@@ -408,11 +403,11 @@ class MarkerFlexPanel(sp.ScrolledPanel):
         self.flexSizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.flexSizer)
         self.GetParent().Layout()
+        self.Layout()
 
 
     def AddLine(self):
         rectSizer = MarkerLinePanel(self, id = self.countLines)
-
         self.countLines += 1
         self.flexSizer.Add(rectSizer, 0)
         self.GetParent().Layout()
@@ -429,7 +424,7 @@ class FileMenu(wx.Menu):
         
     
     def OnInit(self):
-        newItem = wx.MenuItem(parentMenu = self, id = wx.ID_NEW, text = "&Open\tCTRL+O")
+        newItem = wx.MenuItem(parentMenu = self, id = wx.ID_NEW, text = "&Open Video\tCTRL+O")
         self.Append(newItem)
         self.Bind(event = wx.EVT_MENU, handler = self.OnNewVideo, source = newItem)
 
@@ -437,9 +432,13 @@ class FileMenu(wx.Menu):
         self.Append(openItem)
         self.Bind(event = wx.EVT_MENU, handler = self.OnOpen, source = openItem)
 
-        save2Item = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save\tCTRL+S")
-        self.Append(save2Item)
-        self.Bind(event = wx.EVT_MENU, handler = self.OnSave2, source = save2Item)
+        open2Item = wx.MenuItem(parentMenu = self, id = wx.ID_OPEN, text = "&Open Interactions")
+        self.Append(open2Item)
+        self.Bind(event = wx.EVT_MENU, handler = self.OnOpen2, source = openItem)
+
+        saveItem = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save\tCTRL+S")
+        self.Append(saveItem)
+        self.Bind(event = wx.EVT_MENU, handler = self.OnSave, source = saveItem)
 
         quitItem = wx.MenuItem(parentMenu = self, id = wx.ID_EXIT, text = "&Quit")
         self.Append(quitItem)
@@ -497,9 +496,87 @@ class FileMenu(wx.Menu):
         self.parentFrame.Layout()
         self.parentFrame.Refresh()
     
-        
+    
+    
+    def OnOpen2(self, event):
 
-    def OnSave2(self,event):
+        wildcard = "TXT files (*.txt)|*.txt"
+        dialog = wx.FileDialog(self.parentFrame, "Open Text Files", wildcard,
+                                style = wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
+        
+        if dialog.ShowModal() == wx.ID_CANCEL:
+            return None
+
+        path = dialog.GetPath()
+
+        if os.path.exists(path):
+            #with open(path) as f:
+            interactions = pd.read_csv(path, sep = " ", header = None, names = ['frame', 'from', 'to', 'interaction']) #f.readlines()
+
+        # replace loglist
+        self.parentFrame.loglist = ["Loglist\n--------\n"]
+
+        def ranges(nums):
+            nums = sorted(set(nums))
+            gaps = [[s, e] for s, e in zip(nums, nums[1:]) if s+1 < e]
+            edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
+            return list(zip(edges, edges))
+
+        int_summ = interactions.groupby(['from', 'to', 'interaction']).agg({'frame': ranges})
+
+        int_summ = int_summ['frame'].apply(pd.Series).stack().reset_index()
+        int_summ[['min', 'max']] = pd.DataFrame(int_summ[0].tolist(), index = int_summ.index)
+        int_summ.drop(columns = ['level_3', 0], inplace = True)
+        int_summ.sort_values(['from', 'to'], inplace = True)
+
+
+        self.parentFrame.panelTwo.Destroy()
+
+        self.parentFrame.OnInit(self.parentFrame.cap, self.parentFrame.lines[1], filename = self.parentFrame.filename)
+
+        curr_from = -99
+        curr_to = -99
+        curr_int = ""
+        rectSizer = None
+
+        for _, row in int_summ.iterrows():
+            self.parentFrame.loglist.append(row.interaction + " " + str(row['min']) + " " + str(row['max']) + " " + 
+            str(row['from']) + " " + str(row.to) + ' 0\n')
+
+            if (row['from'] != curr_from) or (row['to'] != curr_to) or (row.interaction != curr_int):
+                
+                if rectSizer is not None:
+                    self.parentFrame.panelTwo.flexSizer.Add(rectSizer, 0)
+
+
+                rectSizer = MarkerLinePanel(self.parentFrame.panelTwo, id = self.parentFrame.panelTwo.countLines)
+                rectSizer.who.SetValue(str(row['from']))
+                rectSizer.to.SetValue(str(row['to']))
+                valCalcStart = int(400/self.parentFrame.video_length * row['min'])
+                valCalcEnd = int(400/self.parentFrame.video_length * row['max'])
+                rectSizer.newPanel.permRect.append([row.interaction, wx.Rect((valCalcStart, 0), 
+                                (valCalcEnd - valCalcStart, 20))])
+                self.parentFrame.panelTwo.countLines += 1
+                curr_from = row['from']
+                curr_to = row['to']
+                curr_int = row.interaction
+
+            else:
+                valCalcStart = int(400/self.parentFrame.video_length * row['min'])
+                valCalcEnd = int(400/self.parentFrame.video_length * row['max'])
+                rectSizer.newPanel.permRect.append([row.interaction, wx.Rect((valCalcStart, 0), 
+                                (valCalcEnd - valCalcStart, 20))])
+
+
+        if rectSizer is not None:
+            self.parentFrame.panelTwo.flexSizer.Add(rectSizer, 0)
+
+        self.parentFrame.Refresh()
+        self.parentFrame.Layout()
+        
+            
+
+    def OnSave(self,event):
 
         dialog = wx.FileDialog(self.parentFrame, "Save the labels", defaultFile = self.parentFrame.filename+".txt",
                                 style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
