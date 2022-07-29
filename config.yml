@@ -7,3 +7,4 @@ size:
   height: 650
 others:
   multi_class: no
+  downsize_factor: 2

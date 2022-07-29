@@ -35,6 +35,7 @@ class ImagePanel(wx.Panel):
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         width_factor = self.width/1920
         height_factor = self.height/1080
+        down_factor = self.GetParent().GetParent().downsize_factor
 
         for det in dets:
             dt = det.split(",")
@@ -42,10 +43,10 @@ class ImagePanel(wx.Panel):
 
 
             i = float(dt[1])
-            c1 = float(dt[2]) #* width_factor
-            c2 = float(dt[3]) #* height_factor
-            c3 = float(dt[4]) #* width_factor
-            c4 = float(dt[5]) #* height_factor
+            c1 = float(dt[2])/ down_factor #* width_factor
+            c2 = float(dt[3]) / down_factor #* height_factor
+            c3 = float(dt[4]) / down_factor #* width_factor
+            c4 = float(dt[5]) / down_factor #* height_factor
 
             color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
@@ -463,6 +464,8 @@ class FileMenu(wx.Menu):
 
         if os.path.exists(path):
             cap = cv2.VideoCapture(path)
+            cap.set(3, 400)
+            cap.set(4, 300)
             try:
                 with open(path_labels) as f:
                     lines = f.readlines()
@@ -638,7 +641,11 @@ class MainFrame(wx.Frame):
         self.lines = []
         self.max_id = 0
         self.OnInit(cap, lines, filename)
+
+        with open("config.yml", "r") as ymlfile:
+            cfg = yaml.safe_load(ymlfile)
         
+        self.downsize_factor = int(cfg['others']['downsize_factor'])
 
     def OnInit(self, cap, lines, filename):
         self.filename = filename

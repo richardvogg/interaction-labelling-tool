@@ -104,15 +104,13 @@ class MainPanel(wx.Panel):
         sizer.Add(selectButton, 0, wx.ALL, 5)
         sizer.Add(selectButton2, 0, wx.ALL, 5)
         
-
-
         self.mainSizer = wx.BoxSizer(wx.VERTICAL)
         self.mainSizer.Add(self.image, 1, wx.EXPAND, 0)
         self.mainSizer.Add(sizer, 0)
         
 
         self.SetSizerAndFit(self.mainSizer)
-        self.img_count = 0
+        #self.img_count = 0
 
         #Events
         self.count_start.Bind(wx.EVT_BUTTON, self.SetImgCount)
@@ -124,7 +122,7 @@ class MainPanel(wx.Panel):
 
 
     def SetImgCount(self, event):
-        self.img_count = int(self.img_count_start.GetValue())
+        self.GetParent().img_count = int(self.img_count_start.GetValue())
 
     def GoBack(self, event):
         self.image.PriorFrame(event)
@@ -134,8 +132,6 @@ class MainPanel(wx.Panel):
         self.image.NextFrame(event)
         self.slider.SetValue(self.slider.GetValue()+1)
 
-
-
     def MoveSlider(self, event):
         value = self.slider.GetValue()
         self.image.GoToFrame(event, value)
@@ -143,10 +139,12 @@ class MainPanel(wx.Panel):
     def ClickSelect(self, event):
         after_frame = self.slider.GetValue()
 
-        cv2.imwrite(self.GetParent().output_path + "images/" + "img_%s_1.jpg" % str(self.img_count).zfill(5), 
+        #cv2.imwrite(self.GetParent().output_path + "images/" + "img_%s_1.jpg" % str(self.img_count).zfill(5), 
+        cv2.imwrite(self.GetParent().output_path + "img_%s_1.jpg" % str(self.GetParent().img_count).zfill(5), 
         self.image.frame)
 
-        self.img_count += 1
+        self.GetParent().img_count += 1
+        
 
     def ClickSelect2(self, event):
         after_frame = self.slider.GetValue()
@@ -203,8 +201,9 @@ class MainFrame(wx.Frame):
     def __init__(self, parent, cap, filename):
         super().__init__(parent= None, title='Review Video', size = (850, 550))
         self.max_id = 0
-        self.output_path = "/Users/vogg/Documents/Labeling/Lemurs/"
-        
+        self.output_path = "/Users/vogg/Documents/Labeling/ExplorationRoom/ExpRoomBranches/"
+        self.img_count = 0
+        self.cap = cap
         self.OnInit(cap, filename)
         
 
