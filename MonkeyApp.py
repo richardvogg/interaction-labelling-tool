@@ -514,7 +514,7 @@ class FileMenu(wx.Menu):
 
         if os.path.exists(path):
             #with open(path) as f:
-            interactions = pd.read_csv(path, sep = " ", header = None, names = ['frame', 'from', 'to', 'interaction']) #f.readlines()
+            interactions = pd.read_csv(path, sep = " ", header = None, index_col = False, names = ['frame', 'from', 'to', 'interaction']) #f.readlines()
 
         # replace loglist
         self.parentFrame.loglist = ["Loglist\n--------\n"]
@@ -525,8 +525,9 @@ class FileMenu(wx.Menu):
             edges = iter(nums[:1] + sum(gaps, []) + nums[-1:])
             return list(zip(edges, edges))
 
+        print(interactions)
         int_summ = interactions.groupby(['from', 'to', 'interaction']).agg({'frame': ranges})
-
+        print(int_summ)
         int_summ = int_summ['frame'].apply(pd.Series).stack().reset_index()
         int_summ[['min', 'max']] = pd.DataFrame(int_summ[0].tolist(), index = int_summ.index)
         int_summ.drop(columns = ['level_3', 0], inplace = True)
