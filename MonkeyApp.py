@@ -4,6 +4,7 @@ import cv2
 import pandas as pd
 import yaml
 import os
+import re
 
 #sys.path.insert(0, "/Users/vogg/miniconda3/envs/labelling/lib/python3.8/site-packages")
 
@@ -35,7 +36,7 @@ class ImagePanel(wx.Panel):
         dets = [self.Parent.Parent.lines[-1][i] for i in indices]
         width_factor = self.width/1920
         height_factor = self.height/1080
-        down_factor = self.GetParent().GetParent().downsize_factor
+        down_factor = float(self.GetParent().GetParent().downsize_factor)
 
         for det in dets:
             dt = det.split(",")
@@ -53,7 +54,14 @@ class ImagePanel(wx.Panel):
 
             
             if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
-                label = dt[7] + "-" + dt[1]
+                # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
+                # to avoid problems with the "-" sign later
+
+                if dt[7] == "-1":
+                    cls = "0"
+                else:
+                    cls = dt[7]
+                label = cls + "-" + dt[1]
             else:
                 label = dt[1]
 
@@ -243,23 +251,39 @@ class MainPanel(wx.Panel):
         lns = self.GetParent().lines[-1].copy()
         lns2 = lns.copy()
 
-        
+        ## how to adapt to multiclass?
         current_max = self.Parent.get_max_id()
         for i, line in enumerate(lns2):
             fields = line.split(",")
 
+            if "-" in self.find.GetValue():
+                find_term = self.find.GetValue().split("-")
+                cls = find_term[0]
+                id = find_term[1]
+            else:
+                cls = "-1"
+                id = self.find.GetValue()
+
+            if "-" in self.replace.GetValue():
+                find_term = self.replace.GetValue().split("-")
+                repl_cls = find_term[0]
+                repl_id = find_term[1]
+            else:
+                repl_cls = "-1"
+                repl_id = self.replace.GetValue()
+
             if int(fields[0]) >= after_frame:
-                if str(fields[1]) == str(self.find.GetValue()):
+                if str(fields[1]) == str(id) and (fields[7] == cls or fields[7] == "-1"):
                     
                     if self.replace.GetValue() == "-":
                         lns[i] = "remove"
-                    elif self.replace.GetValue() == "?":
-                        
+                    elif repl_id == "?":
                         fields[1] = str(current_max + 1)
                         lns[i] = ",".join(fields)
                         self.GetParent().max_id += 1
                     else:
-                        fields[1] = self.replace.GetValue()
+                        fields[1] = repl_id
+                        fields[7] = repl_cls
                         lns[i] = ",".join(fields)
         
         lns = [x for x in lns if x!="remove"]
@@ -433,9 +457,9 @@ class FileMenu(wx.Menu):
         self.Append(openItem)
         self.Bind(event = wx.EVT_MENU, handler = self.OnOpen, source = openItem)
 
-        open2Item = wx.MenuItem(parentMenu = self, id = wx.ID_OPEN, text = "&Open Interactions")
+        open2Item = wx.MenuItem(parentMenu = self, id = 5, text = "&Open Interactions")
         self.Append(open2Item)
-        self.Bind(event = wx.EVT_MENU, handler = self.OnOpen2, source = openItem)
+        self.Bind(event = wx.EVT_MENU, handler = self.OnOpen2, source = open2Item)
 
         saveItem = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save\tCTRL+S")
         self.Append(saveItem)
@@ -481,7 +505,9 @@ class FileMenu(wx.Menu):
         self.parentFrame.Refresh()
 
     def OnOpen(self, event):
+        print("Opeeeeening new detections")
         wildcard = "TXT files (*.txt)|*.txt"
+        
         dialog = wx.FileDialog(self.parentFrame, "Open Text Files", wildcard,
                                 style = wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
         
@@ -491,6 +517,7 @@ class FileMenu(wx.Menu):
         path = dialog.GetPath()
 
         if os.path.exists(path):
+            
             with open(path) as f:
                 lines = f.readlines()
         

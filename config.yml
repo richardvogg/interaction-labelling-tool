@@ -7,4 +7,6 @@ size:
   height: 650
 others:
   multi_class: no
-  downsize_factor: 2
+  downsize_factor: 1
+  video_width: 3840
+  video_height: 2160
