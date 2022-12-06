@@ -41,8 +41,6 @@ class ImagePanel(wx.Panel):
         for det in dets:
             dt = det.split(",")
 
-
-
             i = float(dt[1])
             c1 = float(dt[2])/ down_factor #* width_factor
             c2 = float(dt[3]) / down_factor #* height_factor
@@ -56,7 +54,6 @@ class ImagePanel(wx.Panel):
             if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
                 # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
                 # to avoid problems with the "-" sign later
-
                 if dt[7] == "-1":
                     cls = "0"
                 else:
@@ -478,12 +475,12 @@ class FileMenu(wx.Menu):
             return None
         
         path = dialog.GetPath()
-        elems = path.split("/")
+        head_tail = os.path.split(path)
         
-
-        elems.insert(-1, "predictions")
-        elems.append("results.txt")
-        path_labels = "/".join(elems)
+        path_labels = os.path.join(head_tail[0], "predictions", head_tail[1], "results.txt")
+        #elems.insert(-1, "predictions")
+        #elems.append("results.txt")
+        #path_labels = "/".join(elems)
 
 
         if os.path.exists(path):
@@ -499,13 +496,12 @@ class FileMenu(wx.Menu):
             
         
 
-        self.parentFrame.OnInit(cap, lines, filename = elems[-2])
+        self.parentFrame.OnInit(cap, lines, filename = head_tail[1])
         self.parentFrame.panelTwo.OnInit()
         self.parentFrame.Layout()
         self.parentFrame.Refresh()
 
     def OnOpen(self, event):
-        print("Opeeeeening new detections")
         wildcard = "TXT files (*.txt)|*.txt"
         
         dialog = wx.FileDialog(self.parentFrame, "Open Text Files", wildcard,
@@ -617,14 +613,11 @@ class FileMenu(wx.Menu):
 
         path = dialog.GetPath()
         logs = self.parentFrame.loglist
-        elems = path.split("/")
+        head_tail = os.path.split(path)
 
         if self.parentFrame.panelOne.track.GetValue():
 
-
-            elems1 = elems.copy()
-            elems1.insert(-1, "tracking_updated")
-            path_tracking = "/".join(elems1)
+            path_tracking = os.path.join(head_tail[0], "tracking_updated", head_tail[1])
             data = self.parentFrame.lines[-1]
 
 
@@ -634,9 +627,7 @@ class FileMenu(wx.Menu):
 
             # if tracking is updated then we also want to save the log
         #if self.parentFrame.panelOne.log.GetValue():
-            elems2 = elems.copy()
-            elems2.insert(-1, "log")
-            path_log = "/".join(elems2)
+            path_log = os.path.join(head_tail[0], "log", head_tail[1])
 
             with open(path_log, "w+") as myfile:
                 for line in logs:
@@ -645,9 +636,7 @@ class FileMenu(wx.Menu):
 
         if self.parentFrame.panelOne.inter.GetValue():
 
-            elems3 = elems.copy()
-            elems3.insert(-1, "interactions")
-            path_inter = "/".join(elems3)
+            path_inter = os.path.join(head_tail[0], "interactions", head_tail[1])
             with open(path_inter, "w+") as myfile:
                 for line in logs[1:]:
                     fields = line.split(" ")
