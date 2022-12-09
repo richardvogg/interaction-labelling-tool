@@ -18,12 +18,15 @@ class ImagePanel(wx.Panel):
         self.get_frame()
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
+        with open("config.yml", "r") as ymlfile:
+            self.cfg = yaml.safe_load(ymlfile)
+
     def get_frame(self):
         if self.GetParent().GetParent().cap is not None:
             self.GetParent().GetParent().cap.set(cv2.CAP_PROP_POS_FRAMES, self.count)
             self.ret, self.frame = self.GetParent().GetParent().cap.read()
             self.height, self.width = self.frame.shape[:2]
-            self.new_w, self.new_h = 800, int(800 * self.height/self.width)
+            self.new_w, self.new_h = 800, int(800 * self.height/self.width) #######################
 
             self.Bind(wx.EVT_PAINT, self.OnPaint)
 
@@ -57,10 +60,10 @@ class ImagePanel(wx.Panel):
                 if dt[7] == "-1":
                     cls = "0"
                 else:
-                    cls = dt[7]
-                label = cls + "-" + dt[1]
+                    cls = str(int(dt[7]))
+                label = cls + "-" + str(int(dt[1]))
             else:
-                label = dt[1]
+                label = str(int(dt[1]))
 
             
             cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
@@ -68,8 +71,8 @@ class ImagePanel(wx.Panel):
                 cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(50 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
             cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
 
-        height = 500
-        width = 800
+        height = self.cfg['size']['height']
+        width = self.cfg['size']['width']
         shape = self.frame.shape[:2]  # shape = [height, width]
         ratio = min(float(height) / shape[0], float(width) / shape[1])
         new_shape = (round(shape[1] * ratio), round(shape[0] * ratio))  # new_shape = [width, height]
@@ -107,8 +110,17 @@ class MainPanel(wx.Panel):
         super().__init__(parent = parent)
         self.SetBackgroundColour((50,150,150))
 
+        
+        with open("config.yml", "r") as ymlfile:
+            cfg = yaml.safe_load(ymlfile)
+
         #Widgets and Panels
         self.image = ImagePanel(self)
+        shortcut_string = ""
+        for key, value in cfg['keys'].items():
+            shortcut_string += key + ": " + value + "\n"
+
+        shortcuts = wx.StaticText(self, -1, shortcut_string, (cfg['size']['width'] + 50, 20)) #Position on the left of the video panel
 
         
         back = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
@@ -130,8 +142,7 @@ class MainPanel(wx.Panel):
 
         multi = wx.StaticText(self, -1, "Multicls?")
         self.multi = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
-        with open("config.yml", "r") as ymlfile:
-            cfg = yaml.safe_load(ymlfile)
+        
 
         
         if cfg['others']['multi_class']:
@@ -255,22 +266,22 @@ class MainPanel(wx.Panel):
 
             if "-" in self.find.GetValue():
                 find_term = self.find.GetValue().split("-")
-                cls = find_term[0]
-                id = find_term[1]
+                cls = int(find_term[0])
+                id = int(find_term[1])
             else:
                 cls = "-1"
                 id = self.find.GetValue()
 
             if "-" in self.replace.GetValue():
-                find_term = self.replace.GetValue().split("-")
-                repl_cls = find_term[0]
-                repl_id = find_term[1]
+                repl_term = self.replace.GetValue().split("-")
+                repl_cls = int(repl_term[0])
+                repl_id = int(repl_term[1])
             else:
                 repl_cls = "-1"
                 repl_id = self.replace.GetValue()
 
             if int(fields[0]) >= after_frame:
-                if str(fields[1]) == str(id) and (fields[7] == cls or fields[7] == "-1"):
+                if int(fields[1]) == int(id) and (int(fields[7]) == cls or int(fields[7]) == "-1"):
                     
                     if self.replace.GetValue() == "-":
                         lns[i] = "remove"
@@ -279,8 +290,8 @@ class MainPanel(wx.Panel):
                         lns[i] = ",".join(fields)
                         self.GetParent().max_id += 1
                     else:
-                        fields[1] = repl_id
-                        fields[7] = repl_cls
+                        fields[1] = str(repl_id)
+                        fields[7] = str(repl_cls)
                         lns[i] = ",".join(fields)
         
         lns = [x for x in lns if x!="remove"]
@@ -654,7 +665,7 @@ class FileMenu(wx.Menu):
 class MainFrame(wx.Frame):
 
     def __init__(self, parent, cap, lines, filename):
-        super().__init__(parent= None, title='Review Video', size = (850, 650))
+        super().__init__(parent= None, title='Review Video', size = (1100, 800))
         self.lines = []
         self.max_id = 0
         self.OnInit(cap, lines, filename)

@@ -3,10 +3,10 @@ keys:
   g: groom
   l: looking_at
 size:
-  width: 850
-  height: 650
+  width: 900
+  height: 600
 others:
-  multi_class: no
+  multi_class: yes
   downsize_factor: 1
-  video_width: 3840
-  video_height: 2160
+  video_width: 1920
+  video_height: 1080
