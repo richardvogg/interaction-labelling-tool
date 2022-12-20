@@ -41,35 +41,36 @@ class ImagePanel(wx.Panel):
         height_factor = self.height/1080
         down_factor = float(self.GetParent().GetParent().downsize_factor)
 
-        for det in dets:
-            dt = det.split(",")
+        if not self.GetParent().hide.GetValue():
+            for det in dets:
+                dt = det.split(",")
 
-            i = float(dt[1])
-            c1 = float(dt[2])/ down_factor #* width_factor
-            c2 = float(dt[3]) / down_factor #* height_factor
-            c3 = float(dt[4]) / down_factor #* width_factor
-            c4 = float(dt[5]) / down_factor #* height_factor
+                i = float(dt[1])
+                c1 = float(dt[2])/ down_factor #* width_factor
+                c2 = float(dt[3]) / down_factor #* height_factor
+                c3 = float(dt[4]) / down_factor #* width_factor
+                c4 = float(dt[5]) / down_factor #* height_factor
 
-            color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
+                color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
 
-            
-            if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
-                # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
-                # to avoid problems with the "-" sign later
-                if dt[7] == "-1":
-                    cls = "0"
+                
+                if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
+                    # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
+                    # to avoid problems with the "-" sign later
+                    if dt[7] == "-1":
+                        cls = "0"
+                    else:
+                        cls = str(int(dt[7]))
+                    label = cls + "-" + str(int(dt[1]))
                 else:
-                    cls = str(int(dt[7]))
-                label = cls + "-" + str(int(dt[1]))
-            else:
-                label = str(int(dt[1]))
+                    label = str(int(dt[1]))
 
-            
-            cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
-            if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
-                cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(50 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
-            cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
+                
+                cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
+                if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
+                    cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(70 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
+                cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
 
         height = self.cfg['size']['height']
         width = self.cfg['size']['width']
@@ -98,6 +99,7 @@ class ImagePanel(wx.Panel):
         self.count = value
         self.get_frame()
         self.Refresh()
+
 
     def OnKeyPress(self, event):
         self.GetParent().OnKeyPress(event)
@@ -136,13 +138,14 @@ class MainPanel(wx.Panel):
         undo = wx.Button(self, style = wx.BU_EXACTFIT, size = (35, 35))
         undo.Bitmap = wx.ArtProvider.GetBitmap(wx.ART_UNDO)
 
-        descr = wx.StaticText(self, -1, "Playback speed")
-        self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10", "20", "50", "100"])
+        descr = wx.StaticText(self, -1, "Speed")
+        self.speed = wx.Choice(self, id=wx.ID_ANY, choices = ["1", "2", "5", "10", "20", "50", "100", "200", "500", "1000"])
         self.speed.SetSelection(3)
 
         multi = wx.StaticText(self, -1, "Multicls?")
         self.multi = wx.Choice(self, id=wx.ID_ANY, choices = ["Yes", "No"])
-        
+
+        self.hide = wx.CheckBox(self, label = "Hide Boxes")
 
         
         if cfg['others']['multi_class']:
@@ -162,8 +165,7 @@ class MainPanel(wx.Panel):
         self.track.SetValue(True)
         self.inter =  wx.CheckBox(self, label = "Interaction")
         self.inter.SetValue(True)
-        #self.log =  wx.CheckBox(self, label = "Log")
-        #self.log.SetValue(True)
+
 
         self.find = wx.TextCtrl(self, size = (80,25), value = "Find")
         self.replace = wx.TextCtrl(self, size = (80, 25), value = "Replace")
@@ -184,6 +186,7 @@ class MainPanel(wx.Panel):
         sizer.Add(self.multi, 0, wx.ALL, 5)
         sizer.Add(lblbg)
         sizer.Add(self.lblbg, 0, wx.ALL, 5)
+        sizer.Add(self.hide)
         
 
         track_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -213,6 +216,7 @@ class MainPanel(wx.Panel):
         replButton.Bind(wx.EVT_BUTTON, self.ClickOK)
         addButton.Bind(wx.EVT_BUTTON, self.AddAction)
         undo.Bind(wx.EVT_BUTTON, self.UndoAction)
+        self.hide.Bind(wx.EVT_CHECKBOX, self.MoveSlider)
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
 
@@ -302,6 +306,8 @@ class MainPanel(wx.Panel):
         self.GetParent().Refresh()
         for elem in self.GetParent().loglist:
             print(elem)
+
+        self.Refresh()
 
     def AddAction(self, event):
         self.GetParent().panelTwo.AddLine()

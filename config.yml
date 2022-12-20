@@ -1,7 +1,7 @@
 keys:
-  f: fight
-  g: groom
-  l: looking_at
+  p: pushing
+  l: lifting
+  o: observing
 size:
   width: 900
   height: 600
