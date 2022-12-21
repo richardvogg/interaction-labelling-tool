@@ -34,22 +34,22 @@ class ImagePanel(wx.Panel):
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         
         #Draw Rectangles
-        frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines[-1]]
-        indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
-        dets = [self.Parent.Parent.lines[-1][i] for i in indices]
+        #frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines[-1]]
+        #indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
+        #dets = [self.Parent.Parent.lines[-1][i] for i in indices]
+        dets = self.Parent.Parent.line_list[-1][self.Parent.Parent.line_list[-1]["frame"] == (self.count + 1)] 
         width_factor = self.width/1920
         height_factor = self.height/1080
         down_factor = float(self.GetParent().GetParent().downsize_factor)
 
         if not self.GetParent().hide.GetValue():
-            for det in dets:
-                dt = det.split(",")
-
-                i = float(dt[1])
-                c1 = float(dt[2])/ down_factor #* width_factor
-                c2 = float(dt[3]) / down_factor #* height_factor
-                c3 = float(dt[4]) / down_factor #* width_factor
-                c4 = float(dt[5]) / down_factor #* height_factor
+            for index, det in dets.iterrows():
+                #dt = det.split(",")
+                i = float(det['id'])
+                c1 = float(det['x'])/ down_factor #* width_factor
+                c2 = float(det['y']) / down_factor #* height_factor
+                c3 = float(det['w']) / down_factor #* width_factor
+                c4 = float(det['h']) / down_factor #* height_factor
 
                 color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
@@ -58,13 +58,13 @@ class ImagePanel(wx.Panel):
                 if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
                     # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
                     # to avoid problems with the "-" sign later
-                    if dt[7] == "-1":
+                    if det['class'] == "-1":
                         cls = "0"
                     else:
-                        cls = str(int(dt[7]))
-                    label = cls + "-" + str(int(dt[1]))
+                        cls = str(int(det['class']))
+                    label = cls + "-" + str(int(det['id']))
                 else:
-                    label = str(int(dt[1]))
+                    label = str(int(det['id']))
 
                 
                 cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
@@ -260,46 +260,40 @@ class MainPanel(wx.Panel):
         else:
             after_frame = 0
 
-        lns = self.GetParent().lines[-1].copy()
+        lns = self.GetParent().line_list[-1].copy()
         lns2 = lns.copy()
 
         ## how to adapt to multiclass?
         current_max = self.Parent.get_max_id()
-        for i, line in enumerate(lns2):
-            fields = line.split(",")
 
-            if "-" in self.find.GetValue():
-                find_term = self.find.GetValue().split("-")
-                cls = int(find_term[0])
-                id = int(find_term[1])
-            else:
-                cls = "-1"
-                id = self.find.GetValue()
+        if "-" in self.find.GetValue():
+            find_term = self.find.GetValue().split("-")
+            cls = find_term[0]
+            id = find_term[1]
+        else:
+            cls = "-1"
+            id = self.find.GetValue()
 
-            if "-" in self.replace.GetValue():
-                repl_term = self.replace.GetValue().split("-")
-                repl_cls = int(repl_term[0])
-                repl_id = int(repl_term[1])
-            else:
-                repl_cls = "-1"
-                repl_id = self.replace.GetValue()
-
-            if int(fields[0]) >= after_frame:
-                if int(fields[1]) == int(id) and (int(fields[7]) == cls or int(fields[7]) == "-1"):
+        if "-" in self.replace.GetValue():
+            repl_term = self.replace.GetValue().split("-")
+            repl_cls = repl_term[0]
+            repl_id = repl_term[1]
+        else:
+            repl_cls = "-1"
+            repl_id = self.replace.GetValue()
                     
-                    if self.replace.GetValue() == "-":
-                        lns[i] = "remove"
-                    elif repl_id == "?":
-                        fields[1] = str(current_max + 1)
-                        lns[i] = ",".join(fields)
-                        self.GetParent().max_id += 1
-                    else:
-                        fields[1] = str(repl_id)
-                        fields[7] = str(repl_cls)
-                        lns[i] = ",".join(fields)
+        if self.replace.GetValue() == "-":
+            lns = lns.drop(lns[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1"))].index)
+
+        elif repl_id == "?":
+            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(current_max + 1)
+            self.GetParent().max_id += 1
+        else:
+            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = repl_id
+            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'class'] = repl_cls
         
-        lns = [x for x in lns if x!="remove"]
-        self.GetParent().lines.append(lns)
+        #lns = [x for x in lns if x!="remove"]
+        self.GetParent().line_list.append(lns)
         self.GetParent().loglist.append(" ".join(["replace", self.find.GetValue(), 
                                                     self.replace.GetValue(), str(after_frame)+"\n"]))
 
@@ -308,6 +302,7 @@ class MainPanel(wx.Panel):
             print(elem)
 
         self.Refresh()
+        self.image.get_frame()
 
     def AddAction(self, event):
         self.GetParent().panelTwo.AddLine()
@@ -320,7 +315,7 @@ class MainPanel(wx.Panel):
 
         #if we undo a "replace" statement
         if action_items[0] == "replace":
-            self.Parent.lines.pop()
+            self.Parent.line_list.pop()
             self.Parent.loglist.pop()
 
 
@@ -333,6 +328,10 @@ class MainPanel(wx.Panel):
                     child.GetWindow().newPanel.permRect.pop()
                     child.GetWindow().newPanel.Refresh()
                     self.Parent.loglist.pop()
+
+        self.Refresh()
+        self.image.get_frame()
+        
 
 
 class MarkerPanel(wx.Panel):
@@ -505,10 +504,9 @@ class FileMenu(wx.Menu):
             cap.set(3, 400)
             cap.set(4, 300)
             try:
-                with open(path_labels) as f:
-                    lines = f.readlines()
+                lines = pd.read_csv(path_labels, sep = ",", header = None, index_col = False, names = ['frame', 'id', 'x', 'y', 'w', 'h', 'conf', 'class', 'n'])
             except FileNotFoundError:
-                lines = []
+                lines = pd.DataFrame()
                 print("No files found")
             
         
@@ -670,11 +668,11 @@ class FileMenu(wx.Menu):
 
 class MainFrame(wx.Frame):
 
-    def __init__(self, parent, cap, lines, filename):
+    def __init__(self, parent, cap, line_list, filename):
         super().__init__(parent= None, title='Review Video', size = (1100, 800))
-        self.lines = []
+        self.line_list = line_list
         self.max_id = 0
-        self.OnInit(cap, lines, filename)
+        self.OnInit(cap, line_list[-1], filename)
 
         with open("config.yml", "r") as ymlfile:
             cfg = yaml.safe_load(ymlfile)
@@ -686,7 +684,7 @@ class MainFrame(wx.Frame):
         self.cap = cap
         self.get_video_length()
         
-        self.lines.append(lines) #Labels
+        self.line_list.append(lines) #Labels
         self.get_max_id()
         self.loglist = ["Loglist\n--------\n"]
 
@@ -715,12 +713,10 @@ class MainFrame(wx.Frame):
             self.video_length = 20
 
     def get_max_id(self):
+        #this only works for class 0 (monkeys/lemurs) now, not for additional objects
         self.max_id = 0
-        if len(self.lines) > 0:
-            for line in self.lines[-1]:
-                fields = line.split(",")
-                if int(fields[1]) > self.max_id:
-                    self.max_id = int(fields[1])
+        if len(self.line_list[-1].index) > 0:
+            self.max_id = self.line_list[-1]['id'].max()
         return(self.max_id)
 
 
@@ -732,8 +728,8 @@ class myApp(wx.App):
     
     def InitFrame(self):
         cap = None 
-        lines = []
-        frame = MainFrame(parent = None, cap = cap, lines = lines, filename = "")
+        line_list = [pd.DataFrame()]
+        frame = MainFrame(parent = None, cap = cap, line_list = line_list, filename = "")
         frame.Show()
 
 
