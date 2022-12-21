@@ -69,7 +69,7 @@ class ImagePanel(wx.Panel):
                 
                 cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
                 if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
-                    cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(70 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
+                    cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(90 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
                 cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
 
         height = self.cfg['size']['height']
@@ -289,8 +289,8 @@ class MainPanel(wx.Panel):
             lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(current_max + 1)
             self.GetParent().max_id += 1
         else:
-            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = repl_id
-            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'class'] = repl_cls
+            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(repl_id)
+            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'class'] = int(repl_cls)
         
         #lns = [x for x in lns if x!="remove"]
         self.GetParent().line_list.append(lns)
