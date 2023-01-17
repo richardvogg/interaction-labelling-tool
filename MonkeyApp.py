@@ -263,6 +263,8 @@ class MainPanel(wx.Panel):
         lns = self.GetParent().line_list[-1].copy()
         lns2 = lns.copy()
 
+        print(lns)
+        print(after_frame)
         ## how to adapt to multiclass?
         current_max = self.Parent.get_max_id()
 
@@ -283,14 +285,13 @@ class MainPanel(wx.Panel):
             repl_id = self.replace.GetValue()
                     
         if self.replace.GetValue() == "-":
-            lns = lns.drop(lns[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1"))].index)
-
+            lns = lns.drop(lns[(lns['id'] == int(id)) & (lns['frame'] >= after_frame) & ((lns['class'] == int(cls)) | (lns['class'] == "-1"))].index)
         elif repl_id == "?":
-            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(current_max + 1)
+            lns.loc[(lns['id'] == int(id)) & (lns['frame'] >= after_frame) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(current_max + 1)
             self.GetParent().max_id += 1
         else:
-            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(repl_id)
-            lns.loc[(lns['id'] == int(id)) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'class'] = int(repl_cls)
+            lns.loc[(lns['id'] == int(id)) & (lns['frame'] >= after_frame) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'id'] = int(repl_id)
+            lns.loc[(lns['id'] == int(id)) & (lns['frame'] >= after_frame) & ((lns['class'] == int(cls)) | (lns['class'] == "-1")), 'class'] = int(repl_cls)
         
         #lns = [x for x in lns if x!="remove"]
         self.GetParent().line_list.append(lns)
@@ -468,11 +469,11 @@ class FileMenu(wx.Menu):
 
         openItem = wx.MenuItem(parentMenu = self, id = wx.ID_OPEN, text = "&Open Detections")
         self.Append(openItem)
-        self.Bind(event = wx.EVT_MENU, handler = self.OnOpen, source = openItem)
+        self.Bind(event = wx.EVT_MENU, handler = self.OnOpenDet, source = openItem)
 
         open2Item = wx.MenuItem(parentMenu = self, id = 5, text = "&Open Interactions")
         self.Append(open2Item)
-        self.Bind(event = wx.EVT_MENU, handler = self.OnOpen2, source = open2Item)
+        self.Bind(event = wx.EVT_MENU, handler = self.OnOpenInt, source = open2Item)
 
         saveItem = wx.MenuItem(parentMenu = self, id = wx.ID_SAVE, text = "&Save\tCTRL+S")
         self.Append(saveItem)
@@ -498,6 +499,7 @@ class FileMenu(wx.Menu):
         #elems.append("results.txt")
         #path_labels = "/".join(elems)
 
+        self.parentFrame.video_path = path
 
         if os.path.exists(path):
             cap = cv2.VideoCapture(path)
@@ -516,7 +518,7 @@ class FileMenu(wx.Menu):
         self.parentFrame.Layout()
         self.parentFrame.Refresh()
 
-    def OnOpen(self, event):
+    def OnOpenDet(self, event):
         wildcard = "TXT files (*.txt)|*.txt"
         
         dialog = wx.FileDialog(self.parentFrame, "Open Text Files", wildcard,
@@ -529,8 +531,11 @@ class FileMenu(wx.Menu):
 
         if os.path.exists(path):
             
-            with open(path) as f:
-                lines = f.readlines()
+            try:
+                lines = pd.read_csv(path, sep = ",", header = None, index_col = False, names = ['frame', 'id', 'x', 'y', 'w', 'h', 'conf', 'class', 'n'])
+            except FileNotFoundError:
+                lines = pd.DataFrame()
+                print("No files found")
         
         self.parentFrame.OnInit(self.parentFrame.cap, lines, filename = self.parentFrame.filename)
         self.parentFrame.panelTwo.OnInit()
@@ -539,7 +544,7 @@ class FileMenu(wx.Menu):
     
     
     
-    def OnOpen2(self, event):
+    def OnOpenInt(self, event):
 
         wildcard = "TXT files (*.txt)|*.txt"
         dialog = wx.FileDialog(self.parentFrame, "Open Text Files", wildcard,
@@ -574,7 +579,7 @@ class FileMenu(wx.Menu):
 
         self.parentFrame.panelTwo.Destroy()
 
-        self.parentFrame.OnInit(self.parentFrame.cap, self.parentFrame.lines[1], filename = self.parentFrame.filename)
+        self.parentFrame.OnInit(self.parentFrame.cap, self.parentFrame.line_list[-1], filename = self.parentFrame.filename)
 
         curr_from = -99
         curr_to = -99
@@ -620,25 +625,28 @@ class FileMenu(wx.Menu):
 
     def OnSave(self,event):
 
-        dialog = wx.FileDialog(self.parentFrame, "Save the labels", defaultFile = self.parentFrame.filename+".txt",
-                                style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
+        #dialog = wx.FileDialog(self.parentFrame, "Save the labels", defaultFile = self.parentFrame.filename+".txt",
+        #                        style = wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT)
         
-        if dialog.ShowModal() == wx.ID_CANCEL:
-            return None
+        #if dialog.ShowModal() == wx.ID_CANCEL:
+        #    return None
 
-        path = dialog.GetPath()
+        path = self.parentFrame.video_path
+        print(path)
         logs = self.parentFrame.loglist
         head_tail = os.path.split(path)
 
         if self.parentFrame.panelOne.track.GetValue():
 
-            path_tracking = os.path.join(head_tail[0], "tracking_updated", head_tail[1])
-            data = self.parentFrame.lines[-1]
+            path_tracking = os.path.join(head_tail[0], "tracking_updated", head_tail[1] + ".txt")
+            data = self.parentFrame.line_list[-1]
 
+            # TODO pandas to txt!
+            #with open(path_tracking, "w+") as myfile:
+            #    for line in data:
+            #        myfile.write(line)
 
-            with open(path_tracking, "w+") as myfile:
-                for line in data:
-                    myfile.write(line)
+            data.to_csv(path_tracking, header=None, index=None, sep=',', mode='w')
 
             # if tracking is updated then we also want to save the log
         #if self.parentFrame.panelOne.log.GetValue():
@@ -651,7 +659,7 @@ class FileMenu(wx.Menu):
 
         if self.parentFrame.panelOne.inter.GetValue():
 
-            path_inter = os.path.join(head_tail[0], "interactions", head_tail[1])
+            path_inter = os.path.join(head_tail[0], "interactions", head_tail[1] + ".txt")
             with open(path_inter, "w+") as myfile:
                 for line in logs[1:]:
                     fields = line.split(" ")
@@ -672,6 +680,7 @@ class MainFrame(wx.Frame):
         super().__init__(parent= None, title='Review Video', size = (1100, 800))
         self.line_list = line_list
         self.max_id = 0
+        self.video_path = ""
         self.OnInit(cap, line_list[-1], filename)
 
         with open("config.yml", "r") as ymlfile:
@@ -683,6 +692,8 @@ class MainFrame(wx.Frame):
         self.filename = filename
         self.cap = cap
         self.get_video_length()
+
+        
         
         self.line_list.append(lines) #Labels
         self.get_max_id()
