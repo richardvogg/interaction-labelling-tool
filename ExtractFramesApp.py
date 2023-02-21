@@ -201,7 +201,7 @@ class MainFrame(wx.Frame):
     def __init__(self, parent, cap, filename):
         super().__init__(parent= None, title='Review Video', size = (850, 550))
         self.max_id = 0
-        self.output_path = "/Users/vogg/Downloads/"
+        self.output_path = "/Users/vogg/Documents/Labeling/ExplorationRoom/Neda/"
         self.img_count = 0
         self.cap = cap
         self.OnInit(cap, filename)

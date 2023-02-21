@@ -1,10 +1,11 @@
-import wx
-import wx.lib.scrolledpanel as sp
-import cv2
-import pandas as pd
-import yaml
 import os
 import re
+
+import cv2
+import pandas as pd
+import wx
+import wx.lib.scrolledpanel as sp
+import yaml
 
 #sys.path.insert(0, "/Users/vogg/miniconda3/envs/labelling/lib/python3.8/site-packages")
 
@@ -15,11 +16,11 @@ class ImagePanel(wx.Panel):
         super().__init__(parent)
 
         self.count = 0
-        self.get_frame()
-        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
-
         with open("config.yml", "r") as ymlfile:
             self.cfg = yaml.safe_load(ymlfile)
+
+        self.get_frame()
+        self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
 
     def get_frame(self):
         if self.GetParent().GetParent().cap is not None:
@@ -34,46 +35,48 @@ class ImagePanel(wx.Panel):
         self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
         
         #Draw Rectangles
-        #frames = [int(item.split(",")[0]) for item in self.Parent.Parent.lines[-1]]
-        #indices = [i for i, x in enumerate(frames) if x == (self.count +1)]
-        #dets = [self.Parent.Parent.lines[-1][i] for i in indices]
-        dets = self.Parent.Parent.line_list[-1][self.Parent.Parent.line_list[-1]["frame"] == (self.count + 1)] 
-        width_factor = self.width/1920
-        height_factor = self.height/1080
-        down_factor = float(self.GetParent().GetParent().downsize_factor)
+        
 
-        if not self.GetParent().hide.GetValue():
-            for index, det in dets.iterrows():
-                #dt = det.split(",")
-                i = float(det['id'])
-                c1 = float(det['x'])/ down_factor #* width_factor
-                c2 = float(det['y']) / down_factor #* height_factor
-                c3 = float(det['w']) / down_factor #* width_factor
-                c4 = float(det['h']) / down_factor #* height_factor
+        if len(self.GetParent().GetParent().line_list[-1]) > 0:
+            dets = self.GetParent().GetParent().line_list[-1][self.Parent.Parent.line_list[-1]["frame"] == (self.count + 1)] 
+            width_factor = self.width/1920
+            height_factor = self.height/1080
+            down_factor = float(self.GetParent().GetParent().downsize_factor)
 
-                color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
+            if not self.GetParent().hide.GetValue():
+                for index, det in dets.iterrows():
+                    #dt = det.split(",")
+                    i = float(det['id'])
+                    c1 = float(det['x'])/ down_factor #* width_factor
+                    c2 = float(det['y']) / down_factor #* height_factor
+                    c3 = float(det['w']) / down_factor #* width_factor
+                    c4 = float(det['h']) / down_factor #* height_factor
+
+                    color = (i * 100 % 255, i * 75 % 255, i * 50 % 255)
 
 
-                
-                if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
-                    # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
-                    # to avoid problems with the "-" sign later
-                    if det['class'] == "-1":
-                        cls = "0"
+                    
+                    if self.GetParent().multi.GetString(self.GetParent().multi.GetSelection()) == "Yes":
+                        # if the labels are single class but someone selects Multi-Class, then it shows a 0 as class 
+                        # to avoid problems with the "-" sign later
+                        if det['class'] == "-1":
+                            cls = "0"
+                        else:
+                            cls = str(int(det['class']))
+                        label = cls + "-" + str(int(det['id']))
                     else:
-                        cls = str(int(det['class']))
-                    label = cls + "-" + str(int(det['id']))
-                else:
-                    label = str(int(det['id']))
+                        label = str(int(det['id']))
 
-                
-                cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
-                if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
-                    cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(90 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
-                cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
+                    
+                    cv2.rectangle(self.frame, (int(c1), int(c2)), (int(c1 + c3), int(c2 + c4)), color, int(4 * width_factor))
+                    if self.GetParent().multi.GetString(self.GetParent().lblbg.GetSelection()) == "Yes":
+                        cv2.rectangle(self.frame, (int(c1),int(c2 + int(30 * height_factor))), (int(c1 + int(90 * width_factor)),int(c2)), (0,0,0), cv2.FILLED)
+                    cv2.putText(self.frame, label, (int(c1 + int(5 * width_factor)),int(c2 + int(25 * height_factor))), cv2.FONT_HERSHEY_PLAIN, 2 * width_factor, (255,255,0), 2)
 
         height = self.cfg['size']['height']
         width = self.cfg['size']['width']
+        self.Show()
+        width, height = self.GetSize()
         shape = self.frame.shape[:2]  # shape = [height, width]
         ratio = min(float(height) / shape[0], float(width) / shape[1])
         new_shape = (round(shape[1] * ratio), round(shape[0] * ratio))  # new_shape = [width, height]
@@ -82,6 +85,7 @@ class ImagePanel(wx.Panel):
         self.bmp = wx.Bitmap.FromBuffer(new_shape[0], new_shape[1], self.frame)
         dc = wx.PaintDC(self)
         dc.DrawBitmap(self.bmp, 0, 0)
+        self.Layout()
 
     def PriorFrame(self, event):
         if self.count > 0:
@@ -147,6 +151,8 @@ class MainPanel(wx.Panel):
 
         self.hide = wx.CheckBox(self, label = "Hide Boxes")
 
+        self.new_window = wx.Button(self, style = wx.BU_EXACTFIT, label = "+Window", size = (45, 35))
+        self.open_windows = 0
         
         if cfg['others']['multi_class']:
             sel = 0
@@ -182,11 +188,7 @@ class MainPanel(wx.Panel):
         sizer.Add(undo, 0, wx.ALL, 5)
         sizer.Add(descr)
         sizer.Add(self.speed, 0, wx.ALL, 5)
-        sizer.Add(multi)
-        sizer.Add(self.multi, 0, wx.ALL, 5)
-        sizer.Add(lblbg)
-        sizer.Add(self.lblbg, 0, wx.ALL, 5)
-        sizer.Add(self.hide)
+        
         
 
         track_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -197,6 +199,12 @@ class MainPanel(wx.Panel):
         track_sizer.Add(saving, 0, wx.ALL, 5)
         track_sizer.Add(self.track, 0, wx.ALL, 5)
         track_sizer.Add(self.inter, 0, wx.ALL, 5)
+        track_sizer.Add(multi)
+        track_sizer.Add(self.multi, 0, wx.ALL, 5)
+        track_sizer.Add(lblbg)
+        track_sizer.Add(self.lblbg, 0, wx.ALL, 5)
+        track_sizer.Add(self.hide)
+        track_sizer.Add(self.new_window, 0, wx.ALL, 5)
         #track_sizer.Add(self.log, 0, wx.ALL, 5)
 
 
@@ -218,20 +226,33 @@ class MainPanel(wx.Panel):
         undo.Bind(wx.EVT_BUTTON, self.UndoAction)
         self.hide.Bind(wx.EVT_CHECKBOX, self.MoveSlider)
         self.Bind(wx.EVT_KEY_DOWN, self.OnKeyPress)
+        self.new_window.Bind(wx.EVT_BUTTON, self.OnNewWindow)
 
-
+    def OnNewWindow(self, event):
+        title = 'SubFrame {}'.format(self.open_windows)
+        cap = None 
+        line_list = [pd.DataFrame()]
+        frame = OtherFrame(parent = self.GetParent(), cap = cap, line_list = line_list, filename = "")
+        self.GetParent().other_frame_list.append(frame)
+        self.open_windows += 1
 
     def GoBack(self, event):
         self.image.PriorFrame(event)
+        for frame in self.GetParent().other_frame_list:
+            frame.panel.image.PriorFrame(event)
         self.slider.SetValue(self.slider.GetValue()-1)
 
     def GoForward(self, event):
         self.image.NextFrame(event)
+        for frame in self.GetParent().other_frame_list:
+            frame.panel.image.NextFrame(event)
         self.slider.SetValue(self.slider.GetValue()+1)
 
     def MoveSlider(self, event):
         value = self.slider.GetValue()
         self.image.GoToFrame(event, value)
+        for frame in self.GetParent().other_frame_list:
+            frame.panel.image.GoToFrame(event, value)
 
 
     def OnKeyPress(self, event):
@@ -242,15 +263,27 @@ class MainPanel(wx.Panel):
             self.slider.SetValue(self.slider.GetValue() + speed)
             self.image.count += speed
             self.image.get_frame()
-            
             self.image.Refresh()
+
+            for frame in self.GetParent().other_frame_list:
+                frame.panel.image.count += speed
+                frame.panel.image.get_frame()
+                frame.panel.image.Refresh()
+
             self.Refresh()
+
+
         elif keycode == 314 and self.slider.GetValue() > speed:
             
             self.slider.SetValue(self.slider.GetValue() - speed)
             self.image.count -= speed
             self.image.get_frame()
             self.image.Refresh()
+
+            for frame in self.GetParent().other_frame_list:
+                frame.panel.image.count -= speed
+                frame.panel.image.get_frame()
+                frame.panel.image.Refresh()
             self.Refresh()
 
     def ClickOK(self, event):
@@ -685,6 +718,8 @@ class MainFrame(wx.Frame):
 
         with open("config.yml", "r") as ymlfile:
             cfg = yaml.safe_load(ymlfile)
+
+        self.other_frame_list = []
         
         self.downsize_factor = int(cfg['others']['downsize_factor'])
 
@@ -693,8 +728,6 @@ class MainFrame(wx.Frame):
         self.cap = cap
         self.get_video_length()
 
-        
-        
         self.line_list.append(lines) #Labels
         self.get_max_id()
         self.loglist = ["Loglist\n--------\n"]
@@ -729,6 +762,78 @@ class MainFrame(wx.Frame):
         if len(self.line_list[-1].index) > 0:
             self.max_id = self.line_list[-1]['id'].max()
         return(self.max_id)
+
+
+class OtherFrame(wx.Frame):
+    """
+    Class used for creating frames other than the main one
+    """
+    
+    def __init__(self, parent, cap, line_list, filename):
+        super().__init__(parent, title='Review Video', size = (300, 300))
+        self.line_list = line_list
+        self.max_id = 0
+        self.video_path = ""
+        self.cap = cap
+        
+        self.OnInit(cap)
+        
+        self.Show()
+
+    def OnInit(self, cap):
+        self.cap = cap
+
+        self.openButton = wx.Button(self, label = "Open Video", size = (70, 35))
+        self.openButton.Bind(wx.EVT_BUTTON, self.OnOpenVideo)
+        self.panel = OtherPanel(self)
+
+        self.sizer = wx.BoxSizer(wx.VERTICAL)
+        self.sizer.Add(self.openButton, 1, wx.EXPAND)
+        self.sizer.Add(self.panel, 8, wx.EXPAND)
+        
+        self.SetSizer(self.sizer)
+
+
+    def OnOpenVideo(self, event):
+        wildcard = "Videos (*.avi)|*.avi|(*.mp4)|*.mp4"
+        dialog = wx.FileDialog(self, "Open Video", wildcard,
+                                style = wx.FD_OPEN|wx.FD_FILE_MUST_EXIST)
+        
+        if dialog.ShowModal() == wx.ID_CANCEL:
+            return None
+        
+        path = dialog.GetPath()
+        head_tail = os.path.split(path)
+        
+        path_labels = os.path.join(head_tail[0], "predictions", head_tail[1], "results.txt")
+        self.video_path = path
+
+        if os.path.exists(path):
+            cap = cv2.VideoCapture(path)
+            cap.set(3, 400)
+            cap.set(4, 300)
+            try:
+                lines = pd.read_csv(path_labels, sep = ",", header = None, index_col = False, names = ['frame', 'id', 'x', 'y', 'w', 'h', 'conf', 'class', 'n'])
+            except FileNotFoundError:
+                lines = pd.DataFrame()
+                print("No files found")
+            
+        
+        self.OnInit(cap)
+        self.Layout()
+
+
+
+class OtherPanel(wx.Panel):
+    def __init__(self, parent):
+        super().__init__(parent = parent)
+        self.SetBackgroundColour((50,150,150))
+
+        self.image = ImagePanel(self)
+
+        self.mainSizer = wx.BoxSizer(wx.VERTICAL)
+        self.mainSizer.Add(self.image, 1, wx.EXPAND, 0)
+        self.SetSizerAndFit(self.mainSizer)
 
 
 
