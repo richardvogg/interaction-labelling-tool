@@ -1,7 +1,7 @@
 keys:
+  l: looking_at
   p: pushing
-  l: lifting
-  o: observing
+  s: observing
 size:
   width: 900
   height: 600

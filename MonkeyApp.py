@@ -296,8 +296,6 @@ class MainPanel(wx.Panel):
         lns = self.GetParent().line_list[-1].copy()
         lns2 = lns.copy()
 
-        print(lns)
-        print(after_frame)
         ## how to adapt to multiclass?
         current_max = self.Parent.get_max_id()
 
@@ -329,7 +327,7 @@ class MainPanel(wx.Panel):
         #lns = [x for x in lns if x!="remove"]
         self.GetParent().line_list.append(lns)
         self.GetParent().loglist.append(" ".join(["replace", self.find.GetValue(), 
-                                                    self.replace.GetValue(), str(after_frame)+"\n"]))
+                                                    self.replace.GetValue(), str(after_frame), "-99\n"]))
 
         self.GetParent().Refresh()
         for elem in self.GetParent().loglist:
@@ -441,7 +439,7 @@ class MarkerPanel(wx.Panel):
 
 class MarkerLinePanel(wx.Panel):
     def __init__(self, parent, id):
-        super().__init__(parent, id)
+        super().__init__(parent)
 
         self.id = id
 
@@ -458,12 +456,66 @@ class MarkerLinePanel(wx.Panel):
         self.rectSizer.Add(self.to, 0, wx.ALL, 5)
         self.rectSizer.Add(self.both)
 
+        self.who.Bind(wx.EVT_TEXT, self.on_who_text_changed)
+        self.to.Bind(wx.EVT_TEXT, self.on_to_text_changed)
+
         self.SetSizer(self.rectSizer)
+
+    def on_who_text_changed(self, event):
+        new_value = self.who.GetValue()
+        print(self.id)
+        # Update log file with new_value for 'who'
+        self.update_log_file(id = self.id, value = new_value, replace = "who")
+
+    def on_to_text_changed(self, event):
+        new_value = self.to.GetValue()
+        print(self.id)
+        # Update log file with new_value for 'to'
+        self.update_log_file(id = self.id, value = new_value, replace = "to")
+
+    def update_log_file(self, id, value, replace):
+
+        data_list = self.Parent.Parent.loglist
+        output_list = data_list.copy()
+
+        replacement_flag = False
+        for i, entry in enumerate(data_list):
+            # Split the entry into its components
+            parts = entry.split()
+            # Check if the entry has the expected format
+            if len(parts) == 6:
+                # Extract the id from the entry
+                entry_id = parts[5]
+
+                # Check if the id matches the target_id
+                if entry_id == str(id):
+                    # Replace 'who' or 'to' based on the provided criteria
+                    if replace == "who":
+                        old_value = parts[3]
+                        parts[3] = value
+                    elif replace == "to":
+                        old_value = parts[4]
+                        parts[4] = value
+
+                    # Update the entry in the list
+                    output_list[i] = ' '.join(parts)
+                    replacement_flag = True
+
+        if replacement_flag:
+            self.Parent.Parent.loglist = output_list
+            self.Parent.Parent.loglist.append(" ".join(["replace_int", str(id), old_value, str(value), replace, "\n"]))
+
+        # If no matching id is found
+        return True
+
+
+
 
 
 class MarkerFlexPanel(sp.ScrolledPanel):
     def __init__(self, parent):
         super().__init__(parent)
+        self.flexSizer = wx.BoxSizer(wx.VERTICAL)
         self.OnInit()
 
     def OnInit(self):
@@ -471,8 +523,7 @@ class MarkerFlexPanel(sp.ScrolledPanel):
         self.SetupScrolling()
 
         self.countLines = 0
-
-        self.flexSizer = wx.BoxSizer(wx.VERTICAL)
+        
         self.SetSizer(self.flexSizer)
         self.GetParent().Layout()
         self.Layout()
@@ -696,7 +747,7 @@ class FileMenu(wx.Menu):
             with open(path_inter, "w+") as myfile:
                 for line in logs[1:]:
                     fields = line.split(" ")
-                    if fields[0] != "replace":
+                    if not "replace" in fields[0]:
                         for i in range(int(fields[1]),(int(fields[2])+1)):
                             myfile.write(" ".join([str(i), fields[3], fields[4], fields[0]]) + "\n")
         

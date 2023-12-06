@@ -8,6 +8,7 @@ class OtherFrame(wx.Frame):
     def __init__(self, title, parent=None):
         wx.Frame.__init__(self, parent=parent, title=title)
         self.Show()
+        
 class MyPanel(wx.Panel):
     
     def __init__(self, parent):
