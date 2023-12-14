@@ -463,12 +463,14 @@ class MarkerLinePanel(wx.Panel):
 
     def on_who_text_changed(self, event):
         new_value = self.who.GetValue()
+        other_value = self.to.GetValue()
         print(self.id)
         # Update log file with new_value for 'who'
         self.update_log_file(id = self.id, value = new_value, replace = "who")
 
     def on_to_text_changed(self, event):
         new_value = self.to.GetValue()
+        other_value = self.who.GetValue()
         print(self.id)
         # Update log file with new_value for 'to'
         self.update_log_file(id = self.id, value = new_value, replace = "to")
@@ -504,6 +506,7 @@ class MarkerLinePanel(wx.Panel):
         if replacement_flag:
             self.Parent.Parent.loglist = output_list
             self.Parent.Parent.loglist.append(" ".join(["replace_int", str(id), old_value, str(value), replace, "\n"]))
+
 
         # If no matching id is found
         return True
@@ -672,7 +675,7 @@ class FileMenu(wx.Menu):
 
         for _, row in int_summ.iterrows():
             self.parentFrame.loglist.append(row.interaction + " " + str(row['min']) + " " + str(row['max']) + " " + 
-            str(row['from']) + " " + str(row.to) + ' 0\n')
+            str(row['from']) + " " + str(row.to) + " " + str(self.parentFrame.panelTwo.countLines) +'\n')
 
             if (row['from'] != curr_from) or (row['to'] != curr_to) or (row.interaction != curr_int):
                 
