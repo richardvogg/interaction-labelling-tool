@@ -464,20 +464,19 @@ class MarkerLinePanel(wx.Panel):
     def on_who_text_changed(self, event):
         new_value = self.who.GetValue()
         other_value = self.to.GetValue()
-        print(self.id)
         # Update log file with new_value for 'who'
         self.update_log_file(id = self.id, value = new_value, replace = "who")
 
     def on_to_text_changed(self, event):
         new_value = self.to.GetValue()
         other_value = self.who.GetValue()
-        print(self.id)
         # Update log file with new_value for 'to'
         self.update_log_file(id = self.id, value = new_value, replace = "to")
 
     def update_log_file(self, id, value, replace):
 
         data_list = self.Parent.Parent.loglist
+        print("before replacement", data_list)
         output_list = data_list.copy()
 
         replacement_flag = False
@@ -657,9 +656,9 @@ class FileMenu(wx.Menu):
 
         print(interactions)
         int_summ = interactions.groupby(['from', 'to', 'interaction']).agg({'frame': ranges})
-        print(int_summ)
         int_summ = int_summ['frame'].apply(pd.Series).stack().reset_index()
         int_summ[['min', 'max']] = pd.DataFrame(int_summ[0].tolist(), index = int_summ.index)
+        print(int_summ)
         int_summ.drop(columns = ['level_3', 0], inplace = True)
         int_summ.sort_values(['from', 'to'], inplace = True)
 
@@ -674,11 +673,14 @@ class FileMenu(wx.Menu):
         rectSizer = None
 
         for _, row in int_summ.iterrows():
-            self.parentFrame.loglist.append(row.interaction + " " + str(row['min']) + " " + str(row['max']) + " " + 
-            str(row['from']) + " " + str(row.to) + " " + str(self.parentFrame.panelTwo.countLines) +'\n')
+            
 
             if (row['from'] != curr_from) or (row['to'] != curr_to) or (row.interaction != curr_int):
                 
+                self.parentFrame.panelTwo.countLines += 1
+                self.parentFrame.loglist.append(row.interaction + " " + str(row['min']) + " " + str(row['max']) + " " + 
+                str(row['from']) + " " + str(row.to) + " " + str(self.parentFrame.panelTwo.countLines) +'\n')
+
                 if rectSizer is not None:
                     self.parentFrame.panelTwo.flexSizer.Add(rectSizer, 0)
 
@@ -690,16 +692,20 @@ class FileMenu(wx.Menu):
                 valCalcEnd = int(400/self.parentFrame.video_length * row['max'])
                 rectSizer.newPanel.permRect.append([row.interaction, wx.Rect((valCalcStart, 0), 
                                 (valCalcEnd - valCalcStart, 20))])
-                self.parentFrame.panelTwo.countLines += 1
+                
                 curr_from = row['from']
                 curr_to = row['to']
                 curr_int = row.interaction
 
             else:
+                self.parentFrame.loglist.append(row.interaction + " " + str(row['min']) + " " + str(row['max']) + " " + 
+                str(row['from']) + " " + str(row.to) + " " + str(self.parentFrame.panelTwo.countLines) +'\n')
                 valCalcStart = int(400/self.parentFrame.video_length * row['min'])
                 valCalcEnd = int(400/self.parentFrame.video_length * row['max'])
                 rectSizer.newPanel.permRect.append([row.interaction, wx.Rect((valCalcStart, 0), 
                                 (valCalcEnd - valCalcStart, 20))])
+                
+        print("Loglist after loading", self.parentFrame.loglist)
 
 
         if rectSizer is not None:
@@ -745,7 +751,6 @@ class FileMenu(wx.Menu):
 
 
         if self.parentFrame.panelOne.inter.GetValue():
-
             path_inter = os.path.join(head_tail[0], "interactions", head_tail[1] + ".txt")
             with open(path_inter, "w+") as myfile:
                 for line in logs[1:]:
